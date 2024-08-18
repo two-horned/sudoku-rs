@@ -111,7 +111,7 @@ impl fmt::Display for Game {
                 7 => "7",
                 8 => "8",
                 9 => "9",
-                _ => unreachable!(),
+                _ => panic!("Board must not contain {}.", i),
             };
         }
         write!(f, "{}", s)
