@@ -24,7 +24,6 @@ pub fn eval(game: Game) -> EvalReturn {
     EvalReturn::FAILURE
 }
 
-#[derive(Debug)]
 pub enum EvalReturn {
     SUCCESS(Game),
     FAILURE,

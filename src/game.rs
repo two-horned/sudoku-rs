@@ -1,10 +1,6 @@
 use std::fmt;
 
 impl Game {
-    pub fn board(&self) -> [u8; 81] {
-        self.board.clone()
-    }
-
     pub fn choose(&mut self, idx: usize, val: u8) -> bool {
         if self.board[idx] != 0 {
             return false;
@@ -118,7 +114,7 @@ impl fmt::Display for Game {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Game {
     board: [u8; 81],
     row_masks: [u16; 9],

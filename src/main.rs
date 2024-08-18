@@ -38,7 +38,6 @@ fn main() -> io::Result<()> {
         }
         println!("Input:    {}", e);
 
-
         match string_to_board(&e) {
             Err(msg) => {
                 eprintln!("{}", msg);
