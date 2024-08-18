@@ -1,5 +1,4 @@
 use std::io;
-use std::time::Instant;
 use sudoku::evaluater::{eval, EvalReturn};
 use sudoku::game::Game;
 
@@ -29,17 +28,16 @@ fn string_to_board(s: &str) -> Result<[u8; 81], String> {
 }
 
 fn main() -> io::Result<()> {
-    let now = Instant::now();
     println!("Enter each sudoku puzzle as one line.");
     println!("Enter empty line to quit.");
 
     for line in io::stdin().lines() {
         let e = line?;
-        println!("Input:    {}", e);
-
         if e == "" {
             break;
         }
+        println!("Input:    {}", e);
+
 
         match string_to_board(&e) {
             Err(msg) => {
@@ -52,9 +50,5 @@ fn main() -> io::Result<()> {
             },
         }
     }
-    println!(
-        "Time needed to complete puzzles: {}µs",
-        now.elapsed().as_micros()
-    );
-    Ok(println!("Bye"))
+    Ok(println!("Bye."))
 }
