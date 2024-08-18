@@ -29,7 +29,7 @@ fn string_to_board(s: &str) -> Result<[u8; 81], String> {
 
 fn main() -> io::Result<()> {
     println!("Enter each sudoku puzzle as one line.");
-    println!("Enter empty line to quit.");
+    println!("Enter empty line or press Ctr-D to quit.");
 
     for line in io::stdin().lines() {
         let e = line?;
