@@ -1,5 +1,5 @@
 use std::io;
-use sudoku::evaluater::{eval, EvalReturn};
+use sudoku::evaluater::eval;
 use sudoku::game::Game;
 
 fn to_dig(c: char) -> Result<u8, String> {
@@ -44,8 +44,8 @@ fn main() -> io::Result<()> {
                 continue;
             }
             Ok(x) => match eval(Game::from(x)) {
-                EvalReturn::FAILURE => println!("Game cannot be solved."),
-                EvalReturn::SUCCESS(x) => println!("Solution: {}", x),
+                Ok(x) => println!("Solution: {}", x),
+                _ => println!("Game cannot be solved."),
             },
         }
     }

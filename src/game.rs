@@ -7,7 +7,7 @@ impl Game {
         }
 
         self.board[idx] = val;
-        let (row, col, sqr) = get_mask_indices(idx);
+        let (row, col, sqr) = mask_indices(idx);
         let num = !(1 << self.board[idx] - 1);
         self.row_masks[row] &= num;
         self.col_masks[col] &= num;
@@ -25,29 +25,32 @@ impl Game {
                 continue;
             }
 
-            let mut u = vec![];
+            let (row, col, sqr) = mask_indices(i);
+            let num = self.row_masks[row] & self.col_masks[col] & self.sqr_masks[sqr];
 
-            let (row, col, sqr) = get_mask_indices(i);
-            let mut num = self.row_masks[row] & self.col_masks[col] & self.sqr_masks[sqr];
-
-            let mut j = 1;
-            while 0 < num {
-                if num & 1 != 0 {
-                    u.push(j);
-                }
-                num >>= 1;
-                j += 1;
-            }
+            let u = allowed_digits(num);
             if u.len() < min_len {
                 min_len = u.len();
                 idx_vec = Some((i, u));
             }
         }
-        return idx_vec;
+        idx_vec
     }
 }
 
-fn get_mask_indices(idx: usize) -> (usize, usize, usize) {
+fn allowed_digits(mut num: u16) -> Vec<u8> {
+    let mut v = Vec::with_capacity(9);
+
+    for i in 1..10 {
+        if num & 1 != 0 {
+            v.push(i);
+        }
+        num >>= 1;
+    }
+    v
+}
+
+fn mask_indices(idx: usize) -> (usize, usize, usize) {
     let row = idx / 9;
     let col = idx % 9;
     let sqr_row = row / 3;
@@ -65,7 +68,7 @@ fn build_masks(board: &[u8; 81]) -> ([u16; 9], [u16; 9], [u16; 9]) {
         if board[i] == 0 {
             continue;
         }
-        let (row, col, sqr) = get_mask_indices(i);
+        let (row, col, sqr) = mask_indices(i);
         let num = 1 << board[i] - 1;
         row_masks[row] |= num;
         col_masks[col] |= num;
@@ -93,7 +96,7 @@ impl From<[u8; 81]> for Game {
 
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = String::new();
+        let mut s = String::with_capacity(81);
 
         for i in self.board {
             s += match i {

@@ -1,15 +1,15 @@
 use crate::game::Game;
 
-pub fn eval(game: Game) -> EvalReturn {
+pub fn eval(game: Game) -> Result<Game, ()> {
     let free = game.showbestfree();
 
     if free == None {
-        return EvalReturn::SUCCESS(game.clone());
+        return Ok(game);
     }
 
     let (idx, fields) = free.unwrap();
     if fields.len() == 0 {
-        return EvalReturn::FAILURE;
+        return Err(());
     }
 
     let mut g;
@@ -17,14 +17,9 @@ pub fn eval(game: Game) -> EvalReturn {
         g = game.clone();
         g.choose(idx, i);
         match eval(g) {
-            EvalReturn::SUCCESS(x) => return EvalReturn::SUCCESS(x),
+            Ok(x) => return Ok(x),
             _ => (),
         }
     }
-    EvalReturn::FAILURE
-}
-
-pub enum EvalReturn {
-    SUCCESS(Game),
-    FAILURE,
+    Err(())
 }
