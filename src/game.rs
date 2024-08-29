@@ -8,10 +8,10 @@ impl Game {
 
         self.board[idx] = val;
         let (row, col, sqr) = mask_indices(idx);
-        let num = !(1 << self.board[idx] - 1);
-        self.row_masks[row] &= num;
-        self.col_masks[col] &= num;
-        self.sqr_masks[sqr] &= num;
+        let num = 1 << self.board[idx] - 1;
+        self.row_masks[row] |= num;
+        self.col_masks[col] |= num;
+        self.sqr_masks[sqr] |= num;
 
         true
     }
@@ -26,7 +26,7 @@ impl Game {
             }
 
             let (row, col, sqr) = mask_indices(i);
-            let num = self.row_masks[row] & self.col_masks[col] & self.sqr_masks[sqr];
+            let num = self.row_masks[row] | self.col_masks[col] | self.sqr_masks[sqr];
 
             let u = allowed_digits(num);
             if u.len() < min_len {
@@ -42,7 +42,7 @@ fn allowed_digits(mut num: u16) -> Vec<u8> {
     let mut v = Vec::with_capacity(9);
 
     for i in 1..10 {
-        if num & 1 != 0 {
+        if num & 1 == 0 {
             v.push(i);
         }
         num >>= 1;
@@ -60,9 +60,9 @@ fn mask_indices(idx: usize) -> (usize, usize, usize) {
 }
 
 fn build_masks(board: &[u8; 81]) -> ([u16; 9], [u16; 9], [u16; 9]) {
-    let mut row_masks = [0xFE00; 9];
-    let mut col_masks = [0xFE00; 9];
-    let mut sqr_masks = [0xFE00; 9];
+    let mut row_masks = [0; 9];
+    let mut col_masks = [0; 9];
+    let mut sqr_masks = [0; 9];
 
     for i in 0..81 {
         if board[i] == 0 {
@@ -75,11 +75,7 @@ fn build_masks(board: &[u8; 81]) -> ([u16; 9], [u16; 9], [u16; 9]) {
         sqr_masks[sqr] |= num;
     }
 
-    (
-        row_masks.map(|i| !i),
-        col_masks.map(|i| !i),
-        sqr_masks.map(|i| !i),
-    )
+    (row_masks, col_masks, sqr_masks)
 }
 
 impl From<[u8; 81]> for Game {

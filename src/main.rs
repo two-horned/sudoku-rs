@@ -1,4 +1,5 @@
 use std::io;
+use std::time::Instant;
 use sudoku::evaluater::eval;
 use sudoku::game::Game;
 
@@ -36,7 +37,10 @@ fn main() -> io::Result<()> {
         if e == "" {
             break;
         }
-        println!("Input:    {}", e);
+
+        println!("\nInput:       {}", e);
+
+        let now = Instant::now();
 
         match string_to_board(&e) {
             Err(msg) => {
@@ -44,10 +48,12 @@ fn main() -> io::Result<()> {
                 continue;
             }
             Ok(x) => match eval(Game::from(x)) {
-                Ok(x) => println!("Solution: {}", x),
+                Ok(x) => println!("Solution:    {}", x),
                 _ => println!("Game cannot be solved."),
             },
         }
+
+        println!("Time needed: {}ms.", now.elapsed().as_millis());
     }
     Ok(println!("Bye."))
 }
