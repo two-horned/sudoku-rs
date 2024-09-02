@@ -15,7 +15,7 @@ pub fn eval(game: Game) -> Result<Game, ()> {
     let mut g;
     for i in fields {
         g = game.clone();
-        g.choose(idx, i);
+        g.unsafe_choose(idx, i);
         match eval(g) {
             Ok(x) => return Ok(x),
             _ => (),
