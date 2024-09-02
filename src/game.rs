@@ -6,9 +6,9 @@ impl Game {
         let num = 1 << val - 1;
 
         self.board[idx] = val;
-        self.row_masks[row] |= num;
-        self.col_masks[col] |= num;
-        self.sqr_masks[sqr] |= num;
+        self.masks[row] |= num;
+        self.masks[col] |= num;
+        self.masks[sqr] |= num;
     }
 
     pub fn showbestfree(&self) -> Option<(usize, Vec<u8>)> {
@@ -21,7 +21,7 @@ impl Game {
             }
 
             let (row, col, sqr) = mask_indices(i);
-            let num = self.row_masks[row] | self.col_masks[col] | self.sqr_masks[sqr];
+            let num = self.masks[row] | self.masks[col] | self.masks[sqr];
 
             let u = allowed_digits(num);
             if u.len() < min_len {
@@ -31,10 +31,59 @@ impl Game {
         }
         idx_vec
     }
+
+    pub fn showbestneed(&self) -> Option<(u8, Vec<usize>)> {
+        let mut min_len = 10;
+        let mut idx_vec = None;
+
+        for i in 0..27 {
+            for d in allowed_digits(self.masks[i]) {
+                let v = where_other_houses_allow_digit(i, d, self.masks);
+                if v.len() < min_len {
+                    min_len = v.len();
+                    idx_vec = Some((d, v));
+                }
+            }
+        }
+        idx_vec
+    }
+}
+
+fn where_other_houses_allow_digit(house: usize, digit: u8, masks: [u16; 27]) -> Vec<usize> {
+    let num: u16 = 1 << digit - 1;
+    let mut v = Vec::with_capacity(10);
+
+    if house < 9 {
+        for col in 0..9 {
+            let calc = masks[9 + col] | masks[18 + (house / 3) * 3 + col / 3];
+            if calc & num == 0 {
+                v.push(house * 9 + col);
+            }
+        }
+    } else if house < 18 {
+        let col = house - 9;
+        for row in 0..9 {
+            let calc = masks[row] | masks[18 + (row / 3) * 3 + col / 3];
+            if calc & num == 0 {
+                v.push(row * 9 + col);
+            }
+        }
+    } else {
+        let sqr = house - 18;
+        for i in 0..9 {
+            let row = (sqr / 3) * 3 + i / 3;
+            let col = (sqr % 3) * 3 + i % 3;
+            let calc = masks[row] | masks[9 + col];
+            if calc & num == 0 {
+                v.push(row * 9 + col);
+            }
+        }
+    }
+    v
 }
 
 fn allowed_digits(mut num: u16) -> Vec<u8> {
-    let mut v = Vec::with_capacity(9);
+    let mut v = Vec::with_capacity(10);
 
     for i in 1..10 {
         if num & 1 == 0 {
@@ -51,7 +100,7 @@ fn mask_indices(idx: usize) -> (usize, usize, usize) {
     let sqr_row = row / 3;
     let sqr_col = col / 3;
 
-    (row, col, sqr_row * 3 + sqr_col)
+    (row, 9 + col, 18 + sqr_row * 3 + sqr_col)
 }
 
 fn to_dig(c: char) -> Result<u8, ParseGameError> {
@@ -82,9 +131,7 @@ impl FromStr for Game {
             }
         };
 
-        let mut row_masks = [0; 9];
-        let mut col_masks = [0; 9];
-        let mut sqr_masks = [0; 9];
+        let mut masks = [0; 27];
 
         for i in 0..81 {
             if board[i] == 0 {
@@ -92,17 +139,12 @@ impl FromStr for Game {
             }
             let (row, col, sqr) = mask_indices(i);
             let num = 1 << board[i] - 1;
-            row_masks[row] |= num;
-            col_masks[col] |= num;
-            sqr_masks[sqr] |= num;
+            masks[row] |= num;
+            masks[col] |= num;
+            masks[sqr] |= num;
         }
 
-        Ok(Self {
-            board,
-            row_masks,
-            col_masks,
-            sqr_masks,
-        })
+        Ok(Self { board, masks })
     }
 }
 
@@ -138,7 +180,5 @@ pub enum ParseGameError {
 #[derive(Clone)]
 pub struct Game {
     board: [u8; 81],
-    row_masks: [u16; 9],
-    col_masks: [u16; 9],
-    sqr_masks: [u16; 9],
+    masks: [u16; 27],
 }
