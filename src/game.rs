@@ -28,7 +28,7 @@ impl Game {
                     min_len = u.len();
                     idx_vec = Some((i, j, u));
                     if min_len < 2 {
-                        break;
+                        return idx_vec;
                     }
                 }
             }
@@ -83,10 +83,11 @@ impl FromStr for Game {
 
         for i in 0..9 {
             for j in 0..9 {
-                if board[i * 9 + j] == 0 {
+                let val = board[i * 9 + j];
+                if val == 0 {
                     continue;
                 }
-                let num = 1 << board[i] - 1;
+                let num = 1 << val - 1;
                 row_masks[i] |= num;
                 col_masks[j] |= num;
                 sqr_masks[i / 3 * 3 + j / 3] |= num;
