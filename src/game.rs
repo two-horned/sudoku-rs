@@ -2,8 +2,11 @@ use std::{fmt, str::FromStr};
 
 impl Game {
     pub fn unsafe_choose(&mut self, idx: usize, val: u8) {
-        let (row, col, sqr) = mask_indices(idx);
         let num = 1 << val - 1;
+
+        let row = idx / 9;
+        let col = idx % 9;
+        let sqr = row / 3 * 3 + col / 3;
 
         self.board[idx] = val;
         self.row_masks[row] |= num;
@@ -15,20 +18,21 @@ impl Game {
         let mut min_len = 10;
         let mut idx_vec = None;
 
-        for i in 0..81 {
-            if self.board[i] != 0 {
-                continue;
-            }
+        for i in 0..9 {
+            for j in 0..9 {
+                if self.board[i * 9 + j] != 0 {
+                    continue;
+                }
 
-            let (row, col, sqr) = mask_indices(i);
-            let num = self.row_masks[row] | self.col_masks[col] | self.sqr_masks[sqr];
+                let num = self.row_masks[i] | self.col_masks[j] | self.sqr_masks[i / 3 * 3 + j / 3];
 
-            let u = allowed_digits(num);
-            if u.len() < min_len {
-                min_len = u.len();
-                idx_vec = Some((i, u));
-                if min_len < 2 {
-                    break;
+                let u = allowed_digits(num);
+                if u.len() < min_len {
+                    min_len = u.len();
+                    idx_vec = Some((i, u));
+                    if min_len < 2 {
+                        break;
+                    }
                 }
             }
         }
@@ -46,15 +50,6 @@ fn allowed_digits(mut num: u16) -> Vec<u8> {
         num >>= 1;
     }
     v
-}
-
-fn mask_indices(idx: usize) -> (usize, usize, usize) {
-    let row = idx / 9;
-    let col = idx % 9;
-    let sqr_row = row / 3;
-    let sqr_col = col / 3;
-
-    (row, col, sqr_row * 3 + sqr_col)
 }
 
 fn to_dig(c: char) -> Result<u8, ParseGameError> {
@@ -89,15 +84,16 @@ impl FromStr for Game {
         let mut col_masks = [0; 9];
         let mut sqr_masks = [0; 9];
 
-        for i in 0..81 {
-            if board[i] == 0 {
-                continue;
+        for i in 0..9 {
+            for j in 0..9 {
+                if board[i * 9 + j] == 0 {
+                    continue;
+                }
+                let num = 1 << board[i] - 1;
+                row_masks[i] |= num;
+                col_masks[j] |= num;
+                sqr_masks[i / 3 * 3 + j / 3] |= num;
             }
-            let (row, col, sqr) = mask_indices(i);
-            let num = 1 << board[i] - 1;
-            row_masks[row] |= num;
-            col_masks[col] |= num;
-            sqr_masks[sqr] |= num;
         }
 
         Ok(Self {
