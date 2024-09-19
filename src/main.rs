@@ -6,14 +6,10 @@ use sudoku::game::Game;
 
 fn main() -> io::Result<()> {
     println!("Enter each sudoku puzzle as one line.");
-    println!("Enter empty line or press Ctr-D to quit.");
+    println!("Press Ctr-D to quit.");
 
     for line in io::stdin().lines() {
         let e = line?;
-        if e == "" {
-            break;
-        }
-
         println!("\nInput:       {}", e);
 
         let now = Instant::now();

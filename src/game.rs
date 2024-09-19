@@ -27,6 +27,9 @@ impl Game {
             if u.len() < min_len {
                 min_len = u.len();
                 idx_vec = Some((i, u));
+                if min_len < 2 {
+                    break;
+                }
             }
         }
         idx_vec
