@@ -7,7 +7,7 @@ pub fn eval(game: Game) -> Result<Game, ()> {
         return Ok(game);
     }
 
-    let (idx, fields) = free.unwrap();
+    let (row, col, fields) = free.unwrap();
     if fields.len() == 0 {
         return Err(());
     }
@@ -15,7 +15,7 @@ pub fn eval(game: Game) -> Result<Game, ()> {
     let mut g;
     for i in fields {
         g = game.clone();
-        g.unsafe_choose(idx, i);
+        g.unsafe_choose(row, col, i);
         match eval(g) {
             Ok(x) => return Ok(x),
             _ => (),

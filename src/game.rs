@@ -1,20 +1,17 @@
 use std::{fmt, str::FromStr};
 
 impl Game {
-    pub fn unsafe_choose(&mut self, idx: usize, val: u8) {
+    pub fn unsafe_choose(&mut self, row: usize, col: usize, val: u8) {
         let num = 1 << val - 1;
-
-        let row = idx / 9;
-        let col = idx % 9;
         let sqr = row / 3 * 3 + col / 3;
 
-        self.board[idx] = val;
+        self.board[row * 9 + col] = val;
         self.row_masks[row] |= num;
         self.col_masks[col] |= num;
         self.sqr_masks[sqr] |= num;
     }
 
-    pub fn showbestfree(&self) -> Option<(usize, Vec<u8>)> {
+    pub fn showbestfree(&self) -> Option<(usize, usize, Vec<u8>)> {
         let mut min_len = 10;
         let mut idx_vec = None;
 
@@ -29,7 +26,7 @@ impl Game {
                 let u = allowed_digits(num);
                 if u.len() < min_len {
                     min_len = u.len();
-                    idx_vec = Some((i, u));
+                    idx_vec = Some((i, j, u));
                     if min_len < 2 {
                         break;
                     }
