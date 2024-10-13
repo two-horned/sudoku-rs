@@ -3,7 +3,7 @@ use std::{fmt, str::FromStr};
 impl Game {
     pub fn unsafe_choose(&mut self, row: usize, col: usize, val: u8) {
         let num = 1 << val - 1;
-        let sqr = row / 3 * 3 + col / 3;
+        let sqr = row - row % 3 + col / 3;
 
         self.board[row * 9 + col] = val;
         self.row_masks[row] |= num;
@@ -11,42 +11,45 @@ impl Game {
         self.sqr_masks[sqr] |= num;
     }
 
-    pub fn showbestfree(&self) -> Option<(usize, usize, Vec<u8>)> {
-        let mut min_len = 10;
-        let mut idx_vec = None;
+    pub fn showbestfree(&self) -> Option<(usize, usize, u16)> {
+        let mut min_wgt = 10;
+        let mut row_col_num = None;
 
         for i in 0..9 {
             for j in 0..9 {
-                if self.board[i * 9 + j] != 0 {
-                    continue;
+                match self.board[i * 9 + j] {
+                    0 => (),
+                    _ => continue,
                 }
 
-                let num = self.row_masks[i] | self.col_masks[j] | self.sqr_masks[i / 3 * 3 + j / 3];
+                let num = self.row_masks[i] | self.col_masks[j] | self.sqr_masks[i - i % 3 + j / 3];
+                let wgt = weight(num);
 
-                let u = allowed_digits(num);
-                if u.len() < min_len {
-                    min_len = u.len();
-                    idx_vec = Some((i, j, u));
-                    if min_len < 2 {
-                        return idx_vec;
+                if wgt < min_wgt {
+                    min_wgt = wgt;
+                    row_col_num = Some((i, j, num));
+                    match min_wgt {
+                        0 | 1 => return row_col_num,
+                        _ => (),
                     }
                 }
             }
         }
-        idx_vec
+        row_col_num
     }
 }
 
-fn allowed_digits(mut num: u16) -> Vec<u8> {
-    let mut v = Vec::with_capacity(9);
+fn weight(mut num: u16) -> usize {
+    let mut w = 0;
 
-    for i in 1..10 {
-        if num & 1 == 0 {
-            v.push(i);
+    for _ in 1..10 {
+        match num & 1 {
+            0 => w += 1,
+            _ => (),
         }
         num >>= 1;
     }
-    v
+    w
 }
 
 fn to_dig(c: char) -> Result<u8, ParseGameError> {
@@ -84,13 +87,14 @@ impl FromStr for Game {
         for i in 0..9 {
             for j in 0..9 {
                 let val = board[i * 9 + j];
-                if val == 0 {
-                    continue;
+                match val {
+                    0 => continue,
+                    _ => (),
                 }
                 let num = 1 << val - 1;
                 row_masks[i] |= num;
                 col_masks[j] |= num;
-                sqr_masks[i / 3 * 3 + j / 3] |= num;
+                sqr_masks[i - i % 3 + j / 3] |= num;
             }
         }
 
