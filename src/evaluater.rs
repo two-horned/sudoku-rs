@@ -3,8 +3,9 @@ use crate::game::Game;
 pub fn eval(game: Game) -> Result<Game, ()> {
     let free = game.showbestfree();
 
-    if free == None {
-        return Ok(game);
+    match free {
+        None => return Ok(game),
+        _ => (),
     }
 
     let (row, col, mut num) = free.unwrap();
