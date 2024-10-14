@@ -24,7 +24,7 @@ fn _eval(game: Game, row_col: Option<(usize, usize)>) -> Result<Game, ()> {
                 g = game.clone();
                 g.unsafe_choose(row, col, i);
                 match _eval(g, Some((row, col))) {
-                    Ok(x) => return Ok(x),
+                    Ok(x) => if row_col == None {return Ok(x); } else { return eval(x) },
                     _ => (),
                 }
             }

@@ -26,7 +26,7 @@ impl Game {
                     nine_i + j,
                     i,
                     j,
-                    sqr_row + i / 3,
+                    sqr_row + j / 3,
                 ) {
                     return rcn;
                 }
@@ -63,7 +63,7 @@ impl Game {
             let s_row = i + sqr - sqr % 3;
             for j in 0..3 {
                 let s_col = j + sqr % 3 * 3;
-                let s_idx = sqr * 3 + i * 9 + j;
+                let s_idx = s_row * 9 + s_col;
                 if self.__update_row_col_num(&mut rcn, &mut min_wgt, s_idx, s_row, s_col, sqr) {
                     return rcn;
                 }
