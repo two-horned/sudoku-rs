@@ -12,12 +12,12 @@ impl Game {
     }
 
     pub fn showbestfree(&self) -> Option<(usize, usize, u16)> {
-        let mut min_wgt = 10;
+        let mut min_wgt = 11;
         let mut rcn = None;
 
         for i in 0..9 {
-            let nine_i = i * 9;
             let sqr_row = i - i % 3;
+            let nine_i = i * 9;
 
             for j in 0..9 {
                 if self.__update_row_col_num(
@@ -26,7 +26,7 @@ impl Game {
                     nine_i + j,
                     i,
                     j,
-                    sqr_row + i / 3,
+                    sqr_row + j / 3,
                 ) {
                     return rcn;
                 }
@@ -36,7 +36,7 @@ impl Game {
     }
 
     pub fn showbestfree_local(&self, row: usize, col: usize) -> Option<(usize, usize, u16)> {
-        let mut min_wgt = 10;
+        let mut min_wgt = 11;
         let mut rcn = None;
 
         let sqr_row = row - row % 3;
@@ -63,7 +63,7 @@ impl Game {
             let s_row = i + sqr - sqr % 3;
             for j in 0..3 {
                 let s_col = j + sqr % 3 * 3;
-                let s_idx = sqr * 3 + i * 9 + j;
+                let s_idx = s_row * 9 + s_col;
                 if self.__update_row_col_num(&mut rcn, &mut min_wgt, s_idx, s_row, s_col, sqr) {
                     return rcn;
                 }
@@ -82,6 +82,9 @@ impl Game {
         col: usize,
         sqr: usize,
     ) -> bool {
+        assert!(idx == row * 9 + col);
+        assert!(sqr == row - row % 3 + col / 3);
+
         match self.board[idx] {
             0 => (),
             _ => return false,

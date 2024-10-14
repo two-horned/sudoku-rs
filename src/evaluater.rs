@@ -1,29 +1,31 @@
 use crate::game::Game;
 
 pub fn eval(game: Game) -> Result<Game, ()> {
-    _eval(game, None)
-}
-
-fn _eval(game: Game, row_col: Option<(usize, usize)>) -> Result<Game, ()> {
-    let free = match row_col {
-        Some((row, col)) => game.showbestfree_local(row, col),
-        _ => game.showbestfree(),
-    };
+    let free = game.showbestfree();
 
     match free {
-        None => return Ok(game),
-        _ => (),
+        None => Ok(game),
+        Some((i, j, n)) => eval_tail(game, i, j, n),
     }
+}
 
-    let (row, col, mut num) = free.unwrap();
+fn eval_local(game: Game, row: usize, col: usize) -> Result<Game, ()> {
+    let free = game.showbestfree_local(row, col);
+
+    match free {
+        None => eval(game),
+        Some((i, j, n)) => eval_tail(game, i, j, n),
+    }
+}
+
+fn eval_tail(game: Game, row: usize, col: usize, mut num: u16) -> Result<Game, ()> {
     let mut g;
-
     for i in 1..10 {
         match num & 1 {
             0 => {
                 g = game.clone();
                 g.unsafe_choose(row, col, i);
-                match _eval(g, Some((row, col))) {
+                match eval_local(g, row, col) {
                     Ok(x) => return Ok(x),
                     _ => (),
                 }
