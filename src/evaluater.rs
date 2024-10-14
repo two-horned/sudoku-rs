@@ -1,10 +1,24 @@
 use crate::game::Game;
 
-pub fn eval(game: Game) -> Result<Game, ()> {
-    let (i, mut n) = game.showbestfree();
+pub fn eval(mut game: Game) -> Result<Game, ()> {
+    let (i, mut n, w) = game.showbestfree();
 
     if 80 < i {
         return Ok(game);
+    }
+
+    match w {
+        0 => return Err(()),
+        1 => {
+            for x in 1..10 {
+                if n & 1 == 0 {
+                    game.unsafe_choose(i, x);
+                    return eval(game);
+                }
+                n >>= 1;
+            }
+        }
+        _ => (),
     }
 
     let mut g;
@@ -19,6 +33,5 @@ pub fn eval(game: Game) -> Result<Game, ()> {
         }
         n >>= 1;
     }
-
     Err(())
 }

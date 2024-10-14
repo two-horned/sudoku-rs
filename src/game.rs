@@ -29,18 +29,36 @@ impl Game {
 
         c = (row * 9) as usize;
         for _ in 0..9 {
-            if self.nums[c] & mask == 0 {
+            if self.board[c] == 0 && self.nums[c] & mask == 0 {
                 self.nums[c] |= mask;
                 self.weights[c] -= 1;
+                match self.weights[c] {
+                    1 => self.candidates.push(c),
+                    0 => {
+                        self.candidates.clear();
+                        self.candidates.push(c);
+                        return;
+                    }
+                    _ => (),
+                }
             }
             c += 1;
         }
 
         c = col as usize;
         for _ in 0..9 {
-            if self.nums[c] & mask == 0 {
+            if self.board[c] == 0 && self.nums[c] & mask == 0 {
                 self.nums[c] |= mask;
                 self.weights[c] -= 1;
+                match self.weights[c] {
+                    1 => self.candidates.push(c),
+                    0 => {
+                        self.candidates.clear();
+                        self.candidates.push(c);
+                        return;
+                    }
+                    _ => (),
+                }
             }
             c += 9;
         }
@@ -48,9 +66,18 @@ impl Game {
         c = (sqr / 3 * 27 + sqr % 3 * 3) as usize;
         for _ in 0..3 {
             for _ in 0..3 {
-                if self.nums[c] & mask == 0 {
+                if self.board[c] == 0 && self.nums[c] & mask == 0 {
                     self.nums[c] |= mask;
                     self.weights[c] -= 1;
+                    match self.weights[c] {
+                        1 => self.candidates.push(c),
+                        0 => {
+                            self.candidates.clear();
+                            self.candidates.push(c);
+                            return;
+                        }
+                        _ => (),
+                    }
                 }
                 c += 1;
             }
@@ -58,9 +85,12 @@ impl Game {
         }
     }
 
-    pub fn showbestfree(&self) -> (usize, u16) {
+    pub fn showbestfree(&mut self) -> (usize, u16, u8) {
+        if let Some(i) = self.candidates.pop() {
+            return (i, self.nums[i], self.weights[i]);
+        }
+
         let mut min_w = 11;
-        let mut min_n = 0;
         let mut min_i = 81;
 
         for i in 0..81 {
@@ -68,14 +98,23 @@ impl Game {
                 continue;
             }
 
-            if self.weights[i] < min_w {
-                min_w = self.weights[i];
-                min_n = self.nums[i];
-                min_i = i;
+            match self.weights[i] {
+                1 => self.candidates.push(i),
+                0 => return (i, 0, 0),
+                w => {
+                    if w < min_w {
+                        min_w = w;
+                        min_i = i;
+                    }
+                }
             }
         }
 
-        (min_i, min_n)
+        if min_i < 81 {
+            (min_i, self.nums[min_i], self.weights[min_i])
+        } else {
+            (min_i, 0, 0)
+        }
     }
 }
 
@@ -107,12 +146,14 @@ impl FromStr for Game {
             }
         };
 
-        let weights = [10; 81];
+        let weights = [9; 81];
         let nums = [0; 81];
+        let candidates = Vec::with_capacity(10);
         let mut tmp = Self {
             board,
             weights,
             nums,
+            candidates,
         };
 
         for i in 0..81 {
@@ -160,4 +201,5 @@ pub struct Game {
     board: [u8; 81],
     weights: [u8; 81],
     nums: [u16; 81],
+    candidates: Vec<usize>,
 }
