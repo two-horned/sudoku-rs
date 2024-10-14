@@ -1,36 +1,61 @@
 use crate::game::Game;
 
 pub fn eval(game: Game) -> Result<Game, ()> {
-    _eval(game, None)
+    let (w, n, v) = game.collective_showbestfree();
+
+    match (w, v.len()) {
+        (0, _) => Err(()),
+        (_, 0) => Ok(game),
+        _ => eval_tail(game, v, w, n),
+    }
 }
 
-fn _eval(game: Game, row_col: Option<(usize, usize)>) -> Result<Game, ()> {
-    let free = match row_col {
-        Some((row, col)) => game.showbestfree_local(row, col),
-        _ => game.showbestfree(),
-    };
-
-    match free {
-        None => return Ok(game),
-        _ => (),
-    }
-
-    let (row, col, mut num) = free.unwrap();
-    let mut g;
-
-    for i in 1..10 {
-        match num & 1 {
-            0 => {
-                g = game.clone();
-                g.unsafe_choose(row, col, i);
-                match _eval(g, Some((row, col))) {
-                    Ok(x) => return Ok(x),
-                    _ => (),
-                }
-            }
-            _ => (),
+fn eval_local(
+    game: Game,
+    row: usize,
+    col: usize,
+    min_wgt: usize,
+    lbs: Vec<(usize, usize)>,
+) -> Result<Game, ()> {
+    let (mut w, mut n, mut v) = game.collective_showbestfree_local(row, col);
+    if min_wgt < w {
+        (w, n, v) = game.collective_showbestfree_list(lbs.into_iter());
+    } else if min_wgt == w {
+        let (alt_w, alt_n, mut alt_v);
+        (alt_w, alt_n, alt_v) = game.collective_showbestfree_list(lbs.into_iter());
+        if alt_w < w {
+            (w, n, v) = (alt_w, alt_n, alt_v);
+        } else {
+            alt_v.extend(v);
+            v = alt_v;
         }
-        num >>= 1;
     }
-    Err(())
+
+    match (w, v.len()) {
+        (0, _) => Err(()),
+        (_, 0) => eval(game),
+        _ => eval_tail(game, v, w, n),
+    }
+}
+
+fn eval_tail(game: Game, mut v: Vec<(usize, usize)>, w: usize, mut n: u16) -> Result<Game, ()> {
+    let mut g;
+    if let Some((i, j)) = v.pop() {
+        for x in 1..10 {
+            match n & 1 {
+                0 => {
+                    g = game.clone();
+                    g.unsafe_choose(i, j, x);
+                    match eval_local(g, i, j, w, v.clone()) {
+                        Ok(h) => return Ok(h),
+                        _ => (),
+                    }
+                }
+                _ => (),
+            }
+            n >>= 1;
+        }
+        return Err(());
+    }
+    unreachable!();
 }

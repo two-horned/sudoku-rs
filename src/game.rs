@@ -11,51 +11,47 @@ impl Game {
         self.sqr_masks[sqr] |= num;
     }
 
-    pub fn showbestfree(&self) -> Option<(usize, usize, u16)> {
-        let mut min_wgt = 10;
-        let mut rcn = None;
+    pub fn collective_showbestfree(&self) -> (usize, u16, Vec<(usize, usize)>) {
+        let mut w = 11;
+        let mut n = 0;
+        let mut v = Vec::with_capacity(81);
 
         for i in 0..9 {
-            let nine_i = i * 9;
             let sqr_row = i - i % 3;
+            let nine_i = i * 9;
 
             for j in 0..9 {
-                if self.__update_row_col_num(
-                    &mut rcn,
-                    &mut min_wgt,
-                    nine_i + j,
-                    i,
-                    j,
-                    sqr_row + i / 3,
-                ) {
-                    return rcn;
-                }
+                let idx = nine_i + j;
+                let sqr = sqr_row + j / 3;
+
+                self.__update_row_col_nums(&mut v, &mut w, &mut n, idx, i, j, sqr);
             }
         }
-        rcn
+        (w, n, v)
     }
 
-    pub fn showbestfree_local(&self, row: usize, col: usize) -> Option<(usize, usize, u16)> {
-        let mut min_wgt = 10;
-        let mut rcn = None;
+    pub fn collective_showbestfree_local(
+        &self,
+        row: usize,
+        col: usize,
+    ) -> (usize, u16, Vec<(usize, usize)>) {
+        let mut w = 11;
+        let mut n = 0;
+        let mut v = Vec::with_capacity(81);
 
         let sqr_row = row - row % 3;
         let nine_i = row * 9;
         for j in 0..9 {
             let r_idx = nine_i + j;
             let r_sqr = sqr_row + j / 3;
-            if self.__update_row_col_num(&mut rcn, &mut min_wgt, r_idx, row, j, r_sqr) {
-                return rcn;
-            }
+            self.__update_row_col_nums(&mut v, &mut w, &mut n, r_idx, row, j, r_sqr)
         }
 
         let sqr_col = col / 3;
         for i in 0..9 {
             let c_idx = i * 9 + col;
             let c_sqr = i - i % 3 + sqr_col;
-            if self.__update_row_col_num(&mut rcn, &mut min_wgt, c_idx, i, col, c_sqr) {
-                return rcn;
-            }
+            self.__update_row_col_nums(&mut v, &mut w, &mut n, c_idx, i, col, c_sqr)
         }
 
         let sqr = sqr_row + sqr_col;
@@ -63,42 +59,64 @@ impl Game {
             let s_row = i + sqr - sqr % 3;
             for j in 0..3 {
                 let s_col = j + sqr % 3 * 3;
-                let s_idx = sqr * 3 + i * 9 + j;
-                if self.__update_row_col_num(&mut rcn, &mut min_wgt, s_idx, s_row, s_col, sqr) {
-                    return rcn;
-                }
+                let s_idx = s_row * 9 + s_col;
+                self.__update_row_col_nums(&mut v, &mut w, &mut n, s_idx, s_row, s_col, sqr)
             }
         }
-
-        rcn
+        (w, n, v)
     }
 
-    fn __update_row_col_num(
+    pub fn collective_showbestfree_list<I>(&self, it: I) -> (usize, u16, Vec<(usize, usize)>)
+    where
+        I: Iterator<Item = (usize, usize)>,
+    {
+        let mut w = 11;
+        let mut n = 0;
+        let mut v = Vec::with_capacity(81);
+
+        for (i, j) in it {
+            let idx = i * 9 + j;
+            let sqr = i - i % 3 + j / 3;
+            self.__update_row_col_nums(&mut v, &mut w, &mut n, idx, i, j, sqr);
+        }
+
+        (w, n, v)
+    }
+
+    pub fn calc_num(&self, row: usize, col: usize) -> u16 {
+        self.row_masks[row] | self.col_masks[col] | self.sqr_masks[row - row % 3 + col / 3]
+    }
+
+    fn __update_row_col_nums(
         &self,
-        row_col_num: &mut Option<(usize, usize, u16)>,
+        rcn: &mut Vec<(usize, usize)>,
         min_wgt: &mut usize,
+        cnum: &mut u16,
         idx: usize,
         row: usize,
         col: usize,
         sqr: usize,
-    ) -> bool {
+    ) {
+        assert!(idx == row * 9 + col);
+        assert!(sqr == row - row % 3 + col / 3);
+
         match self.board[idx] {
             0 => (),
-            _ => return false,
+            _ => return,
         }
 
         let num = self.row_masks[row] | self.col_masks[col] | self.sqr_masks[sqr];
         let wgt = weight(num);
 
-        if wgt < *min_wgt {
+        if wgt == *min_wgt {
+            rcn.push((row, col));
+            *cnum = num;
+        } else if wgt < *min_wgt {
             *min_wgt = wgt;
-            *row_col_num = Some((row, col, num));
-            match min_wgt {
-                0 | 1 => return true,
-                _ => (),
-            }
+            *cnum = num;
+            rcn.clear();
+            rcn.push((row, col));
         }
-        false
     }
 }
 
