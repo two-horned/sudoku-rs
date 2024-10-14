@@ -1,121 +1,82 @@
 use std::{fmt, str::FromStr};
 
+static LOOKUP: [(u8, u8, u8); 81] = {
+    let mut tmp = [(0, 0, 0); 81];
+    let mut i = 0;
+    while i < 9 {
+        let mut j = 0;
+        let sqr_row = i - i % 3;
+        while j < 9 {
+            let idx = (i * 9 + j) as usize;
+            let sqr = sqr_row + j / 3;
+            tmp[idx] = (i, j, sqr);
+            j += 1;
+        }
+        i += 1;
+    }
+    tmp
+};
+
 impl Game {
-    pub fn unsafe_choose(&mut self, row: usize, col: usize, val: u8) {
-        let num = 1 << val - 1;
-        let sqr = row - row % 3 + col / 3;
-
-        self.board[row * 9 + col] = val;
-        self.row_masks[row] |= num;
-        self.col_masks[col] |= num;
-        self.sqr_masks[sqr] |= num;
+    pub fn unsafe_choose(&mut self, idx: usize, val: u8) {
+        self.board[idx] = val;
+        self.update_local_nums(idx, 1 << (val - 1));
     }
 
-    pub fn showbestfree(&self) -> Option<(usize, usize, u16)> {
-        let mut min_wgt = 11;
-        let mut rcn = None;
+    fn update_local_nums(&mut self, idx: usize, mask: u16) {
+        let (row, col, sqr) = LOOKUP[idx];
+        let mut c;
 
-        for i in 0..9 {
-            let sqr_row = i - i % 3;
-            let nine_i = i * 9;
+        c = (row * 9) as usize;
+        for _ in 0..9 {
+            if self.nums[c] & mask == 0 {
+                self.nums[c] |= mask;
+                self.weights[c] -= 1;
+            }
+            c += 1;
+        }
 
-            for j in 0..9 {
-                if self.__update_row_col_num(
-                    &mut rcn,
-                    &mut min_wgt,
-                    nine_i + j,
-                    i,
-                    j,
-                    sqr_row + j / 3,
-                ) {
-                    return rcn;
+        c = col as usize;
+        for _ in 0..9 {
+            if self.nums[c] & mask == 0 {
+                self.nums[c] |= mask;
+                self.weights[c] -= 1;
+            }
+            c += 9;
+        }
+
+        c = (sqr / 3 * 27 + sqr % 3 * 3) as usize;
+        for _ in 0..3 {
+            for _ in 0..3 {
+                if self.nums[c] & mask == 0 {
+                    self.nums[c] |= mask;
+                    self.weights[c] -= 1;
                 }
+                c += 1;
             }
+            c += 6
         }
-        rcn
     }
 
-    pub fn showbestfree_local(&self, row: usize, col: usize) -> Option<(usize, usize, u16)> {
-        let mut min_wgt = 11;
-        let mut rcn = None;
+    pub fn showbestfree(&self) -> (usize, u16) {
+        let mut min_w = 11;
+        let mut min_n = 0;
+        let mut min_i = 81;
 
-        let sqr_row = row - row % 3;
-        let nine_i = row * 9;
-        for j in 0..9 {
-            let r_idx = nine_i + j;
-            let r_sqr = sqr_row + j / 3;
-            if self.__update_row_col_num(&mut rcn, &mut min_wgt, r_idx, row, j, r_sqr) {
-                return rcn;
+        for i in 0..81 {
+            if self.board[i] != 0 {
+                continue;
+            }
+
+            if self.weights[i] < min_w {
+                min_w = self.weights[i];
+                min_n = self.nums[i];
+                min_i = i;
             }
         }
 
-        let sqr_col = col / 3;
-        for i in 0..9 {
-            let c_idx = i * 9 + col;
-            let c_sqr = i - i % 3 + sqr_col;
-            if self.__update_row_col_num(&mut rcn, &mut min_wgt, c_idx, i, col, c_sqr) {
-                return rcn;
-            }
-        }
-
-        let sqr = sqr_row + sqr_col;
-        for i in 0..3 {
-            let s_row = i + sqr - sqr % 3;
-            for j in 0..3 {
-                let s_col = j + sqr % 3 * 3;
-                let s_idx = s_row * 9 + s_col;
-                if self.__update_row_col_num(&mut rcn, &mut min_wgt, s_idx, s_row, s_col, sqr) {
-                    return rcn;
-                }
-            }
-        }
-
-        rcn
+        (min_i, min_n)
     }
-
-    fn __update_row_col_num(
-        &self,
-        row_col_num: &mut Option<(usize, usize, u16)>,
-        min_wgt: &mut usize,
-        idx: usize,
-        row: usize,
-        col: usize,
-        sqr: usize,
-    ) -> bool {
-        assert!(idx == row * 9 + col);
-        assert!(sqr == row - row % 3 + col / 3);
-
-        match self.board[idx] {
-            0 => (),
-            _ => return false,
-        }
-
-        let num = self.row_masks[row] | self.col_masks[col] | self.sqr_masks[sqr];
-        let wgt = weight(num);
-
-        if wgt < *min_wgt {
-            *min_wgt = wgt;
-            *row_col_num = Some((row, col, num));
-            match min_wgt {
-                0 | 1 => return true,
-                _ => (),
-            }
-        }
-        false
-    }
-}
-
-fn weight(mut num: u16) -> usize {
-    let mut w = 0;
-
-    for _ in 1..10 {
-        match num & 1 {
-            0 => w += 1,
-            _ => (),
-        }
-        num >>= 1;
-    }
-    w
 }
 
 fn to_dig(c: char) -> Result<u8, ParseGameError> {
@@ -146,30 +107,22 @@ impl FromStr for Game {
             }
         };
 
-        let mut row_masks = [0; 9];
-        let mut col_masks = [0; 9];
-        let mut sqr_masks = [0; 9];
+        let weights = [10; 81];
+        let nums = [0; 81];
+        let mut tmp = Self {
+            board,
+            weights,
+            nums,
+        };
 
-        for i in 0..9 {
-            for j in 0..9 {
-                let val = board[i * 9 + j];
-                match val {
-                    0 => continue,
-                    _ => (),
-                }
-                let num = 1 << val - 1;
-                row_masks[i] |= num;
-                col_masks[j] |= num;
-                sqr_masks[i - i % 3 + j / 3] |= num;
+        for i in 0..81 {
+            match board[i] {
+                0 => continue,
+                x => tmp.unsafe_choose(i, x),
             }
         }
 
-        Ok(Self {
-            board,
-            row_masks,
-            col_masks,
-            sqr_masks,
-        })
+        Ok(tmp)
     }
 }
 
@@ -205,7 +158,6 @@ pub enum ParseGameError {
 #[derive(Clone)]
 pub struct Game {
     board: [u8; 81],
-    row_masks: [u16; 9],
-    col_masks: [u16; 9],
-    sqr_masks: [u16; 9],
+    weights: [u8; 81],
+    nums: [u16; 81],
 }
