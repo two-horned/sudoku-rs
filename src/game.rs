@@ -13,29 +13,92 @@ impl Game {
 
     pub fn showbestfree(&self) -> Option<(usize, usize, u16)> {
         let mut min_wgt = 10;
-        let mut row_col_num = None;
+        let mut rcn = None;
 
         for i in 0..9 {
+            let nine_i = i * 9;
+            let sqr_row = i - i % 3;
+
             for j in 0..9 {
-                match self.board[i * 9 + j] {
-                    0 => (),
-                    _ => continue,
-                }
-
-                let num = self.row_masks[i] | self.col_masks[j] | self.sqr_masks[i - i % 3 + j / 3];
-                let wgt = weight(num);
-
-                if wgt < min_wgt {
-                    min_wgt = wgt;
-                    row_col_num = Some((i, j, num));
-                    match min_wgt {
-                        0 | 1 => return row_col_num,
-                        _ => (),
-                    }
+                if self.__update_row_col_num(
+                    &mut rcn,
+                    &mut min_wgt,
+                    nine_i + j,
+                    i,
+                    j,
+                    sqr_row + i / 3,
+                ) {
+                    return rcn;
                 }
             }
         }
-        row_col_num
+        rcn
+    }
+
+    pub fn showbestfree_local(&self, row: usize, col: usize) -> Option<(usize, usize, u16)> {
+        let mut min_wgt = 10;
+        let mut rcn = None;
+
+        let sqr_row = row - row % 3;
+        let nine_i = row * 9;
+        for j in 0..9 {
+            let r_idx = nine_i + j;
+            let r_sqr = sqr_row + j / 3;
+            if self.__update_row_col_num(&mut rcn, &mut min_wgt, r_idx, row, j, r_sqr) {
+                return rcn;
+            }
+        }
+
+        let sqr_col = col / 3;
+        for i in 0..9 {
+            let c_idx = i * 9 + col;
+            let c_sqr = i - i % 3 + sqr_col;
+            if self.__update_row_col_num(&mut rcn, &mut min_wgt, c_idx, i, col, c_sqr) {
+                return rcn;
+            }
+        }
+
+        let sqr = sqr_row + sqr_col;
+        for i in 0..3 {
+            let s_row = i + sqr - sqr % 3;
+            for j in 0..3 {
+                let s_col = j + sqr % 3 * 3;
+                let s_idx = sqr * 3 + i * 9 + j;
+                if self.__update_row_col_num(&mut rcn, &mut min_wgt, s_idx, s_row, s_col, sqr) {
+                    return rcn;
+                }
+            }
+        }
+
+        rcn
+    }
+
+    fn __update_row_col_num(
+        &self,
+        row_col_num: &mut Option<(usize, usize, u16)>,
+        min_wgt: &mut usize,
+        idx: usize,
+        row: usize,
+        col: usize,
+        sqr: usize,
+    ) -> bool {
+        match self.board[idx] {
+            0 => (),
+            _ => return false,
+        }
+
+        let num = self.row_masks[row] | self.col_masks[col] | self.sqr_masks[sqr];
+        let wgt = weight(num);
+
+        if wgt < *min_wgt {
+            *min_wgt = wgt;
+            *row_col_num = Some((row, col, num));
+            match min_wgt {
+                0 | 1 => return true,
+                _ => (),
+            }
+        }
+        false
     }
 }
 
