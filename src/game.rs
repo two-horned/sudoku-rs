@@ -46,7 +46,7 @@ impl Game {
         }
 
         c = col as usize;
-        for _ in 0..9 {
+        for_ in 0..9 {
             if self.board[c] == 0 && self.nums[c] & mask == 0 {
                 self.nums[c] |= mask;
                 self.weights[c] -= 1;
