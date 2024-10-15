@@ -1,13 +1,15 @@
 use std::{fmt, str::FromStr};
 
-static LOOKUP: [(u8, u8, u8); 81] = {
+static LOOKUP: [(usize, usize, usize); 81] = {
     let mut tmp = [(0, 0, 0); 81];
+
     let mut i = 0;
+    let mut j;
     while i < 9 {
-        let mut j = 0;
+        j = 0;
         let sqr_row = i - i % 3;
         while j < 9 {
-            let idx = (i * 9 + j) as usize;
+            let idx = i * 9 + j;
             let sqr = sqr_row + j / 3;
             tmp[idx] = (i, j, sqr);
             j += 1;
@@ -17,113 +19,105 @@ static LOOKUP: [(u8, u8, u8); 81] = {
     tmp
 };
 
+fn lookup(idx: usize) -> (usize, usize, usize) {
+    LOOKUP[idx]
+}
+
 impl Game {
     pub fn unsafe_choose(&mut self, idx: usize, val: u8) {
+        self.last_placed = idx;
         self.board[idx] = val;
         self.update_weight_vectors_and_masks(idx, 1 << (val - 1));
     }
 
-    fn decrease_weight(&mut self, idx: u8, w: usize) {
-        //println!("Weights: {:?}", self.weight_vectors);
+    fn decrease_weight_if_needed(&mut self, idx: usize, mask: u16) {
+        if self.board[idx] != 0 {
+            return;
+        }
+
+        let (i, j, k) = lookup(idx);
+        let num = self.row_masks[i] | self.col_masks[j] | self.sqr_masks[k];
+
+        if num & mask != 0 {
+            return;
+        }
+
+        let w = weight(num);
+
         let len = self.weight_vectors[w].len();
         for i in 0..len {
             if self.weight_vectors[w][i] == idx {
+                //println!("Zuerst {}", self.weight_vectors[w][i]);
                 self.weight_vectors[w][i] = self.weight_vectors[w][len - 1];
+                //println!("Zuletzt {}", self.weight_vectors[w][i]);
                 self.weight_vectors[w].pop();
                 self.weight_vectors[w - 1].push(idx);
                 return;
             }
         }
-        unreachable!();
+        panic!("WHAT IS WITH {}?", idx);
     }
 
     fn update_weight_vectors_and_masks(&mut self, idx: usize, mask: u16) {
-        let (row, col, sqr) = {
-            let (i, j, k) = LOOKUP[idx];
-            (i as usize, j as usize, k as usize)
-        };
+        let (row, col, sqr) = lookup(idx);
 
-        let mut c;
-        c = (row * 9) as usize;
-        for _ in 0..9 {
-            c += 1;
-            if self.board[0] != 0 {
-                continue;
-            }
-
-            let (i, j, k) = {
-                let (i, j, k) = LOOKUP[c - 1];
-                (i as usize, j as usize, k as usize)
-            };
-            let num = self.row_masks[i] | self.col_masks[j] | self.sqr_masks[k];
-            if num & mask != 0 {
-                let w = weight(num);
-                self.decrease_weight(c as u8, w as usize);
-            }
+        for c in (row * 9)..((row + 1) * 9) {
+            self.decrease_weight_if_needed(c, mask);
         }
 
-        c = col as usize;
-        for _ in 0..9 {
-            c += 9;
-            if self.board[0] != 0 {
-                continue;
-            }
-
-            let (i, j, k) = {
-                let (i, j, k) = LOOKUP[c - 9];
-                (i as usize, j as usize, k as usize)
-            };
-            let num = self.row_masks[i] | self.col_masks[j] | self.sqr_masks[k];
-            if num & mask != 0 {
-                let w = weight(num);
-                self.decrease_weight(c as u8, w as usize);
-            }
-        }
-
-        c = (sqr / 3 * 27 + sqr % 3 * 3) as usize;
-        for _ in 0..3 {
-            for _ in 0..3 {
-                c += 1;
-                if self.board[0] != 0 {
-                    continue;
-                }
-                let (i, j, k) = {
-                    let (i, j, k) = LOOKUP[c];
-                    (i as usize, j as usize, k as usize)
-                };
-                let num = self.row_masks[i] | self.col_masks[j] | self.sqr_masks[k];
-                if num & mask != 0 {
-                    let w = weight(num);
-                    self.decrease_weight(c as u8, w as usize);
-                }
-            }
-            c += 6
+        for c in (col..81).step_by(9) {
+            self.decrease_weight_if_needed(c, mask);
         }
 
         self.row_masks[row] |= mask;
         self.col_masks[col] |= mask;
+
+        let mut c;
+        c = sqr / 3 * 27 + sqr % 3 * 3;
+        for _ in 0..3 {
+            for _ in 0..3 {
+                self.decrease_weight_if_needed(c, mask);
+                c += 1;
+            }
+            c += 6
+        }
+
         self.sqr_masks[sqr] |= mask;
     }
 
-    pub fn showbestfree(&mut self) -> (usize, u16, u8) {
-        let mut i = 0;
-        while i < 10 && self.weight_vectors[i].len() == 0 {
-            i += 1;
-        }
-        if i < 10 {
-            let idx = self.weight_vectors[i].pop().unwrap() as usize;
-            let (row, col, sqr) = LOOKUP[idx];
-            let num = self.row_masks[row as usize]
-                | self.col_masks[col as usize]
-                | self.sqr_masks[sqr as usize];
-            return (idx, num, i as u8);
+    pub fn showbestfree(&mut self) -> (usize, u16, usize) {
+        let min_d = (2_f64 * 9_f64.powi(2)).sqrt();
+        let (xx, yy, _) = lookup(self.last_placed);
+        for i in 0..10 {
+            let len = self.weight_vectors[i].len();
+            if len == 0 {
+                continue;
+            }
+
+            let mut min_j = 0;
+            for j in 0..len {
+                let idx = self.weight_vectors[i][j];
+                let (x, y, _) = lookup(idx);
+                if (((xx - x) as f64).abs().powi(2) + ((yy - y) as f64).abs().powi(2)).sqrt()
+                    < min_d
+                {
+                    min_j = j;
+                }
+            }
+            let min_idx = self.weight_vectors[i][min_j];
+            self.weight_vectors[i][min_j] = self.weight_vectors[i][len - 1];
+            self.weight_vectors[i].pop();
+
+            let (row, col, sqr) = lookup(min_idx);
+            let num = self.row_masks[row] | self.col_masks[col] | self.sqr_masks[sqr];
+            return (min_idx, num, i);
         }
 
         (81, 0, 0)
     }
 }
 
-fn weight(mut n: u16) -> u8 {
+fn weight(mut n: u16) -> usize {
     let mut w = 0;
     for _ in 0..9 {
         if n & 1 == 0 {
@@ -167,38 +161,38 @@ impl FromStr for Game {
         let mut sqr_masks = [0; 27];
 
         for i in 0..81 {
-            if board[i] != 0 {
+            if board[i] == 0 {
                 continue;
             }
 
-            let (row, col, sqr) = LOOKUP[i];
-            let num = 1 << board[i] - 1;
+            let (row, col, sqr) = lookup(i);
+            let num = 1 << (board[i] - 1);
 
-            row_masks[row as usize] |= num;
-            col_masks[col as usize] |= num;
-            sqr_masks[sqr as usize] |= num;
+            row_masks[row] |= num;
+            col_masks[col] |= num;
+            sqr_masks[sqr] |= num;
         }
 
-        let mut weight_vectors: [Vec<u8>; 10] = [
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
-            Vec::with_capacity(10),
+        let mut weight_vectors = [
+            Vec::with_capacity(9),
+            Vec::with_capacity(18),
+            Vec::with_capacity(27),
+            Vec::with_capacity(36),
+            Vec::with_capacity(40),
+            Vec::with_capacity(40),
+            Vec::with_capacity(40),
+            Vec::with_capacity(40),
+            Vec::with_capacity(40),
+            Vec::with_capacity(40),
         ];
 
         for i in 0..81 {
             if board[i] != 0 {
                 continue;
             }
-            let (row, col, sqr) = LOOKUP[i];
-            let num = row_masks[row as usize] | col_masks[col as usize] | sqr_masks[sqr as usize];
-            weight_vectors[weight(num) as usize].push(i as u8);
+            let (row, col, sqr) = lookup(i);
+            let num = row_masks[row] | col_masks[col] | sqr_masks[sqr];
+            weight_vectors[weight(num)].push(i);
         }
 
         Ok(Self {
@@ -207,6 +201,7 @@ impl FromStr for Game {
             col_masks,
             sqr_masks,
             weight_vectors,
+            last_placed: 41,
         })
     }
 }
@@ -246,5 +241,6 @@ pub struct Game {
     row_masks: [u16; 27],
     col_masks: [u16; 27],
     sqr_masks: [u16; 27],
-    weight_vectors: [Vec<u8>; 10],
+    weight_vectors: [Vec<usize>; 10],
+    last_placed: usize,
 }
