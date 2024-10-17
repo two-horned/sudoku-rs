@@ -1,50 +1,72 @@
-use crate::game::Game;
+/* TODO:
+ * - Cleanup
+ * - Add way to prune away already seen patterns
+ *   - Storing subsets (maybe use bloom filter?)
+ */
+
+use crate::game::{Game, ShowKinds};
 
 pub fn eval(mut game: Game) -> Result<Game, ()> {
-    if let Some((i, mut n, w)) = game.showbestfree() {
-        match w {
-            0 => return Err(()),
-            1 => {
-                for x in 1..10 {
-                    if n & 1 == 0 {
-                        game.unsafe_choose(i, x);
-                        return eval(game);
-                    }
-                    n >>= 1;
-                }
-            }
-            _ => (),
-        }
+    match game.showbestfree() {
+        ShowKinds::FAILED => Err(()),
+        ShowKinds::SOLVED => Ok(game),
+        ShowKinds::PICKIDX(idx, mut candidates) => {
+            let mut g;
 
-        let (j, mut m, u) = game.showbestfree_alt().unwrap();
-        match u {
-            0 => return Err(()),
-            1 => {
-                for x in 1..10 {
-                    if m & 1 == 0 {
-                        game.unsafe_choose_house(j, x);
-                        return eval(game);
+            for x in 1..10 {
+                if candidates & 1 == 0 {
+                    g = game.clone();
+                    g.unsafe_choose(idx, x);
+                    match eval(g) {
+                        Ok(k) => return Ok(k),
+                        _ => (),
                     }
-                    m >>= 1;
                 }
+                candidates >>= 1;
             }
-            _ => (),
+            Err(())
         }
+        ShowKinds::PICKIDXNC(idx, mut candidates) => {
+            for x in 1..10 {
+                if candidates & 1 == 0 {
+                    game.unsafe_choose(idx, x);
+                    match eval(game) {
+                        Ok(k) => return Ok(k),
+                        _ => return Err(()),
+                    }
+                }
+                candidates >>= 1;
+            }
+            unreachable!()
+        }
+        ShowKinds::PICKVAL(vht, mut candidates) => {
+            let mut g;
 
-        let mut g;
-        for x in 1..10 {
-            if n & 1 == 0 {
-                g = game.clone();
-                g.unsafe_choose(i, x);
-                match eval(g) {
-                    Ok(k) => return Ok(k),
-                    _ => (),
+            for x in 0..9 {
+                if candidates & 1 == 0 {
+                    g = game.clone();
+                    g.unsafe_choose_alt(vht, x);
+                    match eval(g) {
+                        Ok(k) => return Ok(k),
+                        _ => (),
+                    }
                 }
+                candidates >>= 1;
             }
-            n >>= 1;
+            Err(())
         }
-        Err(())
-    } else {
-        Ok(game)
+        ShowKinds::PICKVALNC(vht, mut candidates) => {
+            for x in 0..9 {
+                if candidates & 1 == 0 {
+                    game.unsafe_choose_alt(vht, x);
+                    match eval(game) {
+                        Ok(k) => return Ok(k),
+                        _ => return Err(()),
+                    }
+                }
+                candidates >>= 1;
+            }
+            unreachable!()
+        }
     }
 }
