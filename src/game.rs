@@ -57,43 +57,44 @@ impl Game {
         let val = val - 1;
         let mask_idx = 1 << val;
 
-        for (house_type, house_index) in (0..3).zip(LOOKUP[idx]) {
-            for subindex in 0..9 {
-                let regional_index = REV_LOOKUP[house_type][house_index][subindex];
-                let num = self.candidates(regional_index);
-                let mask_val = 1 << subindex;
+        let rcsi = LOOKUP[idx];
 
-                if regional_index == idx || num & mask_idx != 0 {
-                    self.val_house_pos_indices[val][house_type][house_index] |= mask_val;
+        for ht in 0..3 {
+            let hi = rcsi[ht];
+
+            for si in 0..9 {
+                let local_idx = REV_LOOKUP[ht][hi][si];
+                let local_rcsi = LOOKUP[local_idx];
+                let num = self.candidates(local_idx);
+                if num & mask_idx != 0 || (ht != 2 && rcsi[2] == local_rcsi[2]) {
                     continue;
                 }
 
                 let w = weight(num);
                 let wv = &mut self.weight_idx_vectors;
-                for i in 0..wv[w].len() {
-                    if wv[w][i] == regional_index {
-                        swap_with_last_and_delete(&mut wv[w], i);
-                        wv[w - 1].push(regional_index);
-                        break;
-                    }
+
+                find_and_delete(&mut wv[w], local_idx);
+                if local_idx != idx {
+                    wv[w - 1].push(local_idx);
                 }
 
-                let num = self.val_house_pos_indices[val][i][j];
-                let w = weight(num);
-                let wv = &mut self.weight_val_house_vectors;
-                for k in 0..wv[w].len() {
-                    if wv[w][k] == [val, i, j] {
-                        swap_with_last_and_delete(&mut wv[w], k);
-                        if self.house_masks[i][j] == 0x1ff {
-                            break;
-                        }
-                        wv[w - 1].push([val, i, j]);
-                        break;
+                for lht in 0..3 {
+                    let lhi = local_rcsi[lht];
+                    let mask_val = 1 << local_rcsi[lht ^ 1];
+                    let num = self.val_house_pos_indices[val][lht][lhi];
+                    let w = weight(num);
+                    let wv = &mut self.weight_val_house_vectors;
+                    find_and_delete(&mut wv[w], [val, lht, lhi]);
+                    if rcsi[lht] != lhi {
+                        wv[w - 1].push([val, lht, lhi]);
                     }
+                    self.val_house_pos_indices[val][lht][lhi] |= mask_val;
                 }
-                self.val_house_pos_indices[val][i][j] |= mask_val;
             }
-            self.house_masks[i][j] |= mask_idx;
+        }
+        for ht in 0..3 {
+            let hi = rcsi[ht];
+            self.house_masks[ht][hi] |= mask_idx;
         }
     }
 
@@ -153,6 +154,19 @@ where
     v.pop();
 }
 
+fn find_and_delete<T>(v: &mut Vec<T>, val: T) -> bool
+where
+    T: Copy + PartialEq,
+{
+    for i in 0..v.len() {
+        if v[i] == val {
+            swap_with_last_and_delete(v, i);
+            return true;
+        }
+    }
+    false
+}
+
 fn weight(mut n: u16) -> usize {
     let mut w = 0;
     for _ in 0..9 {
@@ -190,7 +204,7 @@ impl FromStr for Game {
             Vec::with_capacity(81), Vec::with_capacity(81), Vec::with_capacity(81),
             Vec::with_capacity(81), Vec::with_capacity(81), Vec::with_capacity(81),
             Vec::with_capacity(81), Vec::with_capacity(81), Vec::with_capacity(81),
-            (0..81).filter(|&i| board[i] == 0).collect()
+            (0..81).collect()
         ];
 
         let mut v = Vec::with_capacity(243);
