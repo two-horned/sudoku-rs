@@ -1,7 +1,4 @@
 /* TODO:
- * - Remove all weight vectors of set indices and filled houses
- * - Update all weight vectors of all regional indices for a set index-value pair
- * - Update all weight vectors of all houses that have less possible indices for a value
  * - Add smarter way to initialise puzzle
  */
 
@@ -49,59 +46,100 @@ impl Game {
 
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
         self.last_placed = idx;
-        self.board[idx] = val;
         self.update_weight_vectors_and_masks(idx, val);
+        self.board[idx] = val;
+        self.update_candidates(idx, val);
+        self.update_val_house_pos(idx, val);
+    }
+
+    fn update_candidates(&mut self, idx: usize, val: usize) {
+        let mask = 1 << (val - 1);
+        let rcsi = LOOKUP[idx];
+        for ht in 0..3 {
+            let hi = rcsi[ht];
+            self.house_masks[ht][hi] |= mask;
+        }
+    }
+
+    fn update_val_house_pos(&mut self, idx: usize, val: usize) {
+        let rcsi = LOOKUP[idx];
+        let val = val - 1;
+
+        for ht in 0..3 {
+            let hi = rcsi[ht];
+            let mask = 1 << rcsi[ht ^ 1];
+            for v in 0..9 {
+                let num = &mut self.val_house_pos_indices[v][ht][hi];
+                if *num & mask != 0 {
+                    continue;
+                }
+                let w = weight(*num);
+                let wv = &mut self.weight_val_house_vectors;
+
+                find_and_delete(&mut wv[w], [v, ht, hi]);
+                if v != val {
+                    wv[w - 1].push([v, ht, hi]);
+                    *num |= mask;
+                }
+            }
+        }
     }
 
     fn update_weight_vectors_and_masks(&mut self, idx: usize, val: usize) {
         let val = val - 1;
-        let mask_idx = 1 << val;
-
+        let mask = 1 << val;
         let rcsi = LOOKUP[idx];
-
         for ht in 0..3 {
             let hi = rcsi[ht];
-
             for si in 0..9 {
                 let local_idx = REV_LOOKUP[ht][hi][si];
                 let local_rcsi = LOOKUP[local_idx];
                 let num = self.candidates(local_idx);
-                if num & mask_idx != 0 || (ht != 2 && rcsi[2] == local_rcsi[2]) {
+
+                if (self.board[local_idx] != 0)
+                    || (num & mask != 0)
+                    || (ht != 2 && local_rcsi[2] == rcsi[2])
+                {
                     continue;
                 }
-
                 let w = weight(num);
+
                 let wv = &mut self.weight_idx_vectors;
 
-                find_and_delete(&mut wv[w], local_idx);
+                if !find_and_delete(&mut wv[w], local_idx) {
+                    if w == 0 {
+                        println!("WHATTT?");
+                    }
+                    panic!("Could not find.... idx bla bla");
+                }
                 if local_idx != idx {
                     wv[w - 1].push(local_idx);
                 }
 
-                for lht in 0..3 {
-                    let lhi = local_rcsi[lht];
-                    let mask_val = 1 << local_rcsi[lht ^ 1];
-                    let num = self.val_house_pos_indices[val][lht][lhi];
-                    let w = weight(num);
+                if local_idx == idx {
+                    continue;
+                }
+
+                for ht in 0..3 {
+                    let hi = local_rcsi[ht];
+                    let mask = 1 << local_rcsi[ht ^ 1];
+                    let num = &mut self.val_house_pos_indices[val][ht][hi];
+                    let w = weight(*num);
                     let wv = &mut self.weight_val_house_vectors;
-                    find_and_delete(&mut wv[w], [val, lht, lhi]);
-                    if rcsi[lht] != lhi {
-                        wv[w - 1].push([val, lht, lhi]);
+
+                    if !find_and_delete(&mut wv[w], [val, ht, hi]) {
+                        println!("{:b}", num);
+                        panic!("Could not find.... val house pos bla bla");
                     }
-                    self.val_house_pos_indices[val][lht][lhi] |= mask_val;
+                    wv[w - 1].push([val, ht, hi]);
+                    *num |= mask;
                 }
             }
         }
-        for ht in 0..3 {
-            let hi = rcsi[ht];
-            self.house_masks[ht][hi] |= mask_idx;
-        }
     }
 
-    fn showbestfree_idx(&mut self, w: usize) -> ShowKinds {
-        let wv = &mut self.weight_idx_vectors[w];
-        let min_idx = wv[0];
-        swap_with_last_and_delete(wv, 0);
+    fn showbestfree_idx(&self, w: usize) -> ShowKinds {
+        let min_idx = self.weight_idx_vectors[w][0];
         if w == 1 {
             ShowKinds::PICKIDXNC(min_idx, self.candidates(min_idx))
         } else {
@@ -109,9 +147,8 @@ impl Game {
         }
     }
 
-    fn showbestfree_val(&mut self, w: usize) -> ShowKinds {
-        let wv = &mut self.weight_val_house_vectors[w];
-        let [i, j, k] = wv.pop().unwrap();
+    fn showbestfree_val(&self, w: usize) -> ShowKinds {
+        let [i, j, k] = self.weight_val_house_vectors[w][0];
         let idc = self.val_house_pos_indices[i][j][k];
         if w == 1 {
             ShowKinds::PICKVALNC([i, j, k], idc)
@@ -120,7 +157,7 @@ impl Game {
         }
     }
 
-    pub fn showbestfree(&mut self) -> ShowKinds {
+    pub fn showbestfree(&self) -> ShowKinds {
         let len1 = self.weight_idx_vectors[0].len();
         let len2 = self.weight_val_house_vectors[0].len();
         match len1 + len2 {
@@ -183,7 +220,7 @@ impl FromStr for Game {
     type Err = ParseGameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let board: [_; 81] = {
+        let choices: [_; 81] = {
             let chars: Vec<_> = s
                 .chars()
                 .map(|c| match c as usize {
@@ -198,14 +235,11 @@ impl FromStr for Game {
             }
         };
 
-        let (house_masks, val_house_pos_indices) = ([[0; 9]; 3], [[[0; 9]; 3]; 9]);
-
-        let weight_idx_vectors = [
+        let weight_idx_vectors =
+            [ Vec::with_capacity(81), Vec::with_capacity(81), Vec::with_capacity(81),
             Vec::with_capacity(81), Vec::with_capacity(81), Vec::with_capacity(81),
             Vec::with_capacity(81), Vec::with_capacity(81), Vec::with_capacity(81),
-            Vec::with_capacity(81), Vec::with_capacity(81), Vec::with_capacity(81),
-            (0..81).collect()
-        ];
+            (0..81).collect() ];
 
         let mut v = Vec::with_capacity(243);
         for i in 0..9 {
@@ -230,19 +264,19 @@ impl FromStr for Game {
         ];
 
         let mut tmp = Self {
-            board,
-            house_masks,
-            val_house_pos_indices,
+            board: [0; 81],
+            house_masks: [[0; 9]; 3],
+            val_house_pos_indices: [[[0; 9]; 3]; 9],
             weight_idx_vectors,
             weight_val_house_vectors,
             last_placed: 40,
         };
 
         for i in 0..81 {
-            if board[i] == 0 {
+            if choices[i] == 0 {
                 continue;
             }
-            tmp.unsafe_choose(i, board[i]);
+            tmp.unsafe_choose(i, choices[i]);
         }
 
         Ok(tmp)
