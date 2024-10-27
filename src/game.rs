@@ -38,6 +38,29 @@ static REV_LOOKUP: [[[usize; 9]; 9]; 3] = {
     tmp
 };
 
+static TEMPLATE_VAL_IDX_HOUSE: [[usize; 3]; 243] = {
+    let mut tmp = [[0, 0, 0]; 243];
+    let mut idx = 0;
+    let mut i = 0;
+    let mut j;
+    let mut k;
+    while i < 9 {
+        j = 0;
+        while j < 3 {
+            k = 0;
+            while k < 9 {
+                tmp[idx] = [i, j, k];
+                idx += 1;
+                k += 1;
+            }
+            j += 1;
+        }
+
+        i += 1;
+    }
+    tmp
+};
+
 impl Game {
     pub fn unsafe_choose_alt(&mut self, vht: [usize; 3], idx: usize) {
         let [val, ht, hi] = vht;
@@ -45,7 +68,6 @@ impl Game {
     }
 
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
-        self.last_placed = idx;
         self.update_weight_vectors_and_masks(idx, val);
         self.board[idx] = val;
         self.update_candidates(idx, val);
@@ -106,12 +128,7 @@ impl Game {
 
                 let wv = &mut self.weight_idx_vectors;
 
-                if !find_and_delete(&mut wv[w], local_idx) {
-                    if w == 0 {
-                        println!("WHATTT?");
-                    }
-                    panic!("Could not find.... idx bla bla");
-                }
+                find_and_delete(&mut wv[w], local_idx);
                 if local_idx != idx {
                     wv[w - 1].push(local_idx);
                 }
@@ -127,10 +144,7 @@ impl Game {
                     let w = weight(*num);
                     let wv = &mut self.weight_val_house_vectors;
 
-                    if !find_and_delete(&mut wv[w], [val, ht, hi]) {
-                        println!("{:b}", num);
-                        panic!("Could not find.... val house pos bla bla");
-                    }
+                    find_and_delete(&mut wv[w], [val, ht, hi]);
                     wv[w - 1].push([val, ht, hi]);
                     *num |= mask;
                 }
@@ -241,15 +255,6 @@ impl FromStr for Game {
             Vec::with_capacity(81), Vec::with_capacity(81), Vec::with_capacity(81),
             (0..81).collect() ];
 
-        let mut v = Vec::with_capacity(243);
-        for i in 0..9 {
-            for j in 0..3 {
-                for k in 0..9 {
-                    v.push([i, j, k]);
-                }
-            }
-        }
-
         let weight_val_house_vectors = [
             Vec::with_capacity(243),
             Vec::with_capacity(243),
@@ -260,7 +265,7 @@ impl FromStr for Game {
             Vec::with_capacity(243),
             Vec::with_capacity(243),
             Vec::with_capacity(243),
-            v
+            TEMPLATE_VAL_IDX_HOUSE.into_iter().collect()
         ];
 
         let mut tmp = Self {
@@ -269,7 +274,6 @@ impl FromStr for Game {
             val_house_pos_indices: [[[0; 9]; 3]; 9],
             weight_idx_vectors,
             weight_val_house_vectors,
-            last_placed: 40,
         };
 
         for i in 0..81 {
@@ -320,5 +324,4 @@ pub struct Game {
     val_house_pos_indices: [[[u16; 9]; 3]; 9],
     weight_idx_vectors: [Vec<usize>; 10],
     weight_val_house_vectors: [Vec<[usize; 3]>; 10],
-    last_placed: usize,
 }

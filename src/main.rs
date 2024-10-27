@@ -25,7 +25,7 @@ fn main() -> io::Result<()> {
             },
         }
 
-        println!("Time needed: {}ms.", now.elapsed().as_millis());
+        println!("Time needed: {}μs.", now.elapsed().as_micros());
     }
     Ok(println!("Bye."))
 }
