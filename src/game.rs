@@ -38,7 +38,7 @@ static REV_LOOKUP: [[[usize; 9]; 9]; 3] = {
     tmp
 };
 
-static TEMPLATE_VAL_IDX_HOUSE: [[usize; 3]; 243] = {
+static TEMPLATE_VAL_HOUSE: [[usize; 3]; 243] = {
     let mut tmp = [[0, 0, 0]; 243];
     let mut idx = 0;
     let mut i = 0;
@@ -50,6 +50,29 @@ static TEMPLATE_VAL_IDX_HOUSE: [[usize; 3]; 243] = {
             k = 0;
             while k < 9 {
                 tmp[idx] = [i, j, k];
+                idx += 1;
+                k += 1;
+            }
+            j += 1;
+        }
+
+        i += 1;
+    }
+    tmp
+};
+
+static TEMPLATE_QUICK_VAL_HOUSE: [[[usize; 9]; 3]; 9] = {
+    let mut tmp = [[[0; 9]; 3]; 9];
+    let mut idx = 0;
+    let mut i = 0;
+    let mut j;
+    let mut k;
+    while i < 9 {
+        j = 0;
+        while j < 3 {
+            k = 0;
+            while k < 9 {
+                tmp[i][j][k] = idx;
                 idx += 1;
                 k += 1;
             }
@@ -91,17 +114,15 @@ impl Game {
             let hi = rcsi[ht];
             let mask = 1 << rcsi[ht ^ 1];
             for v in 0..9 {
-                let num = &mut self.val_house_pos_indices[v][ht][hi];
-                if *num & mask != 0 {
+                let num = self.val_house_pos_indices[v][ht][hi];
+                if num & mask != 0 {
                     continue;
                 }
-                let w = weight(*num);
-                let wv = &mut self.weight_val_house_vectors;
-
-                find_and_delete(&mut wv[w], [v, ht, hi]);
+                let w = weight(num);
+                self.find_and_delete_val_house(w, [v, ht, hi]);
                 if v != val {
-                    wv[w - 1].push([v, ht, hi]);
-                    *num |= mask;
+                    self.add_val_house(w - 1, [v, ht, hi]);
+                    self.val_house_pos_indices[v][ht][hi] |= mask;
                 }
             }
         }
@@ -126,11 +147,9 @@ impl Game {
                 }
                 let w = weight(num);
 
-                let wv = &mut self.weight_idx_vectors;
-
-                find_and_delete(&mut wv[w], local_idx);
+                self.find_and_delete_idx(w, local_idx);
                 if local_idx != idx {
-                    wv[w - 1].push(local_idx);
+                    self.add_idx(w - 1, local_idx);
                 }
 
                 if local_idx == idx {
@@ -140,13 +159,12 @@ impl Game {
                 for ht in 0..3 {
                     let hi = local_rcsi[ht];
                     let mask = 1 << local_rcsi[ht ^ 1];
-                    let num = &mut self.val_house_pos_indices[val][ht][hi];
-                    let w = weight(*num);
-                    let wv = &mut self.weight_val_house_vectors;
+                    let num = self.val_house_pos_indices[val][ht][hi];
+                    let w = weight(num);
 
-                    find_and_delete(&mut wv[w], [val, ht, hi]);
-                    wv[w - 1].push([val, ht, hi]);
-                    *num |= mask;
+                    self.find_and_delete_val_house(w, [val, ht, hi]);
+                    self.add_val_house(w - 1, [val, ht, hi]);
+                    self.val_house_pos_indices[val][ht][hi] |= mask;
                 }
             }
         }
@@ -195,27 +213,38 @@ impl Game {
         let [i, j, k, _] = LOOKUP[idx];
         self.house_masks[0][i] | self.house_masks[1][j] | self.house_masks[2][k]
     }
-}
 
-fn swap_with_last_and_delete<T>(v: &mut Vec<T>, idx: usize)
-where
-    T: Copy,
-{
-    v[idx] = v[v.len() - 1];
-    v.pop();
-}
-
-fn find_and_delete<T>(v: &mut Vec<T>, val: T) -> bool
-where
-    T: Copy + PartialEq,
-{
-    for i in 0..v.len() {
-        if v[i] == val {
-            swap_with_last_and_delete(v, i);
-            return true;
-        }
+    fn add_idx(&mut self, weight: usize, idx: usize) {
+        let v = &mut self.weight_idx_vectors[weight];
+        self.quick_idx[idx] = v.len();
+        v.push(idx);
     }
-    false
+
+    fn add_val_house(&mut self, weight: usize, val_house: [usize; 3]) {
+        let v = &mut self.weight_val_house_vectors[weight];
+        let [i, j, k] = val_house;
+        self.quick_val_house[i][j][k] = v.len();
+        v.push(val_house);
+    }
+
+    fn find_and_delete_idx(&mut self, weight: usize, idx: usize) {
+        let v = &mut self.weight_idx_vectors[weight];
+        let i = self.quick_idx[idx];
+        let l = v[v.len() - 1];
+        self.quick_idx[l] = i;
+        v[i] = v[v.len() - 1];
+        v.pop();
+    }
+
+    fn find_and_delete_val_house(&mut self, weight: usize, val_house: [usize; 3]) {
+        let v = &mut self.weight_val_house_vectors[weight];
+        let [i, j, k] = val_house;
+        let i = self.quick_val_house[i][j][k];
+        let [l1, l2, l3] = v[v.len() - 1];
+        self.quick_val_house[l1][l2][l3] = i;
+        v[i] = v[v.len() - 1];
+        v.pop();
+    }
 }
 
 fn weight(mut n: u16) -> usize {
@@ -265,7 +294,7 @@ impl FromStr for Game {
             Vec::with_capacity(243),
             Vec::with_capacity(243),
             Vec::with_capacity(243),
-            TEMPLATE_VAL_IDX_HOUSE.into_iter().collect()
+            TEMPLATE_VAL_HOUSE.into_iter().collect()
         ];
 
         let mut tmp = Self {
@@ -274,6 +303,8 @@ impl FromStr for Game {
             val_house_pos_indices: [[[0; 9]; 3]; 9],
             weight_idx_vectors,
             weight_val_house_vectors,
+            quick_idx: std::array::from_fn(|i| i),
+            quick_val_house: TEMPLATE_QUICK_VAL_HOUSE,
         };
 
         for i in 0..81 {
@@ -324,4 +355,6 @@ pub struct Game {
     val_house_pos_indices: [[[u16; 9]; 3]; 9],
     weight_idx_vectors: [Vec<usize>; 10],
     weight_val_house_vectors: [Vec<[usize; 3]>; 10],
+    quick_idx: [usize; 81],
+    quick_val_house: [[[usize; 9]; 3]; 9],
 }
