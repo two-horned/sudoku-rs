@@ -14,7 +14,7 @@ The program reads from the standard input stream (stdin), so
 one can run:
 
 ```sh
-> cat test_puzzles.txt | cargo run --release
+cat test_puzzles.txt | cargo run --release
 ```
 
 Each puzzles is represented by one line, just like in the `test_puzzles.txt` file.
