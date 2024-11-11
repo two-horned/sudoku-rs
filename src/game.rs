@@ -307,10 +307,9 @@ impl FromStr for Game {
         };
 
         for i in 0..81 {
-            if choices[i] == 0 {
-                continue;
+            if choices[i] != 0 {
+                tmp.unsafe_choose(i, choices[i] as usize);
             }
-            tmp.unsafe_choose(i, choices[i] as usize);
         }
 
         Ok(tmp)
