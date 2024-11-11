@@ -38,7 +38,7 @@ static REV_LOOKUP: [[[usize; 9]; 9]; 3] = {
     tmp
 };
 
-static TEMPLATE_VAL_HOUSE: [[usize; 3]; 243] = {
+static TEMPLATE_VAL_HOUSE: [[u8; 3]; 243] = {
     let mut tmp = [[0, 0, 0]; 243];
     let mut idx = 0;
     let mut i = 0;
@@ -61,7 +61,7 @@ static TEMPLATE_VAL_HOUSE: [[usize; 3]; 243] = {
     tmp
 };
 
-static TEMPLATE_QUICK_VAL_HOUSE: [[[usize; 9]; 3]; 9] = {
+static TEMPLATE_QUICK_VAL_HOUSE: [[[u8; 9]; 3]; 9] = {
     let mut tmp = [[[0; 9]; 3]; 9];
     let mut idx = 0;
     let mut i = 0;
@@ -115,14 +115,13 @@ impl Game {
             let mask = 1 << rcsi[ht ^ 1];
             for v in 0..9 {
                 let num = self.val_house_pos_indices[v][ht][hi];
-                if num & mask != 0 {
-                    continue;
-                }
-                let w = weight(num);
-                self.find_and_delete_val_house(w, [v, ht, hi]);
-                if v != val {
-                    self.add_val_house(w - 1, [v, ht, hi]);
+                if num & mask == 0 {
                     self.val_house_pos_indices[v][ht][hi] |= mask;
+                    let w = weight(num);
+                    self.find_and_delete_val_house(w, [v, ht, hi]);
+                    if v != val {
+                        self.add_val_house(w - 1, [v, ht, hi]);
+                    }
                 }
             }
         }
@@ -148,13 +147,12 @@ impl Game {
                 let w = weight(num);
 
                 self.find_and_delete_idx(w, local_idx);
-                if local_idx != idx {
-                    self.add_idx(w - 1, local_idx);
-                }
 
                 if local_idx == idx {
                     continue;
                 }
+
+                self.add_idx(w - 1, local_idx);
 
                 for ht in 0..3 {
                     let hi = local_rcsi[ht];
@@ -172,15 +170,16 @@ impl Game {
 
     fn showbestfree_idx(&self, w: usize) -> ShowKinds {
         let min_idx = self.weight_idx_vectors[w][0];
+        let cands = self.candidates(min_idx as usize);
         if w == 1 {
-            ShowKinds::PICKIDXNC(min_idx, self.candidates(min_idx))
+            ShowKinds::PICKIDXNC(min_idx as usize, cands)
         } else {
-            ShowKinds::PICKIDX(min_idx, self.candidates(min_idx))
+            ShowKinds::PICKIDX(min_idx as usize, cands)
         }
     }
 
     fn showbestfree_val(&self, w: usize) -> ShowKinds {
-        let [i, j, k] = self.weight_val_house_vectors[w][0];
+        let [i, j, k] = self.weight_val_house_vectors[w][0].map(|x| x as usize);
         let idc = self.val_house_pos_indices[i][j][k];
         if w == 1 {
             ShowKinds::PICKVALNC([i, j, k], idc)
@@ -216,23 +215,23 @@ impl Game {
 
     fn add_idx(&mut self, weight: usize, idx: usize) {
         let v = &mut self.weight_idx_vectors[weight];
-        self.quick_idx[idx] = v.len();
-        v.push(idx);
+        self.quick_idx[idx] = v.len() as u8;
+        v.push(idx as u8);
     }
 
     fn add_val_house(&mut self, weight: usize, val_house: [usize; 3]) {
         let v = &mut self.weight_val_house_vectors[weight];
         let [i, j, k] = val_house;
-        self.quick_val_house[i][j][k] = v.len();
-        v.push(val_house);
+        self.quick_val_house[i][j][k] = v.len() as u8;
+        v.push(val_house.map(|x| x as u8));
     }
 
     fn find_and_delete_idx(&mut self, weight: usize, idx: usize) {
         let v = &mut self.weight_idx_vectors[weight];
         let i = self.quick_idx[idx];
         let l = v[v.len() - 1];
-        self.quick_idx[l] = i;
-        v[i] = v[v.len() - 1];
+        self.quick_idx[l as usize] = i;
+        v[i as usize] = l;
         v.pop();
     }
 
@@ -241,8 +240,8 @@ impl Game {
         let [i, j, k] = val_house;
         let i = self.quick_val_house[i][j][k];
         let [l1, l2, l3] = v[v.len() - 1];
-        self.quick_val_house[l1][l2][l3] = i;
-        v[i] = v[v.len() - 1];
+        self.quick_val_house[l1 as usize][l2 as usize][l3 as usize] = i;
+        v[i as usize] = [l1, l2, l3];
         v.pop();
     }
 }
@@ -266,7 +265,7 @@ impl FromStr for Game {
         let choices: [_; 81] = {
             let chars: Vec<_> = s
                 .chars()
-                .map(|c| match c as usize {
+                .map(|c| match c as u8 {
                     46 => Ok(0),
                     x if 47 < x && x < 58 => Ok(x - 48),
                     _ => Err(ParseGameError::UnknownCharacter(c)),
@@ -303,7 +302,7 @@ impl FromStr for Game {
             val_house_pos_indices: [[[0; 9]; 3]; 9],
             weight_idx_vectors,
             weight_val_house_vectors,
-            quick_idx: std::array::from_fn(|i| i),
+            quick_idx: std::array::from_fn(|i| i as u8),
             quick_val_house: TEMPLATE_QUICK_VAL_HOUSE,
         };
 
@@ -311,7 +310,7 @@ impl FromStr for Game {
             if choices[i] == 0 {
                 continue;
             }
-            tmp.unsafe_choose(i, choices[i]);
+            tmp.unsafe_choose(i, choices[i] as usize);
         }
 
         Ok(tmp)
@@ -353,8 +352,8 @@ pub struct Game {
     board: [usize; 81],
     house_masks: [[u16; 9]; 3],
     val_house_pos_indices: [[[u16; 9]; 3]; 9],
-    weight_idx_vectors: [Vec<usize>; 10],
-    weight_val_house_vectors: [Vec<[usize; 3]>; 10],
-    quick_idx: [usize; 81],
-    quick_val_house: [[[usize; 9]; 3]; 9],
+    weight_idx_vectors: [Vec<u8>; 10],
+    weight_val_house_vectors: [Vec<[u8; 3]>; 10],
+    quick_idx: [u8; 81],
+    quick_val_house: [[[u8; 9]; 3]; 9],
 }
