@@ -117,7 +117,7 @@ impl Game {
                 let num = self.val_house_pos_indices[v][ht][hi];
                 if num & mask == 0 {
                     self.val_house_pos_indices[v][ht][hi] |= mask;
-                    let w = weight(num);
+                    let w = num.count_zeros() as usize;
                     self.find_and_delete_val_house(w, [v, ht, hi]);
                     if v != val {
                         self.add_val_house(w - 1, [v, ht, hi]);
@@ -144,7 +144,7 @@ impl Game {
                 {
                     continue;
                 }
-                let w = weight(num);
+                let w = num.count_zeros() as usize;
 
                 self.find_and_delete_idx(w, local_idx);
 
@@ -158,7 +158,7 @@ impl Game {
                     let hi = local_rcsi[ht];
                     let mask = 1 << local_rcsi[ht ^ 1];
                     let num = self.val_house_pos_indices[val][ht][hi];
-                    let w = weight(num);
+                    let w = num.count_zeros() as usize;
 
                     self.find_and_delete_val_house(w, [val, ht, hi]);
                     self.add_val_house(w - 1, [val, ht, hi]);
@@ -246,17 +246,6 @@ impl Game {
     }
 }
 
-fn weight(mut n: u16) -> usize {
-    let mut w = 0;
-    for _ in 0..9 {
-        if n & 1 == 0 {
-            w += 1;
-        }
-        n >>= 1;
-    }
-    w
-}
-
 #[rustfmt::skip]
 impl FromStr for Game {
     type Err = ParseGameError;
@@ -298,8 +287,8 @@ impl FromStr for Game {
 
         let mut tmp = Self {
             board: [0; 81],
-            house_masks: [[0; 9]; 3],
-            val_house_pos_indices: [[[0; 9]; 3]; 9],
+            house_masks: [[0xFE00; 9]; 3],
+            val_house_pos_indices: [[[0xFE00; 9]; 3]; 9],
             weight_idx_vectors,
             weight_val_house_vectors,
             quick_idx: std::array::from_fn(|i| i as u8),
