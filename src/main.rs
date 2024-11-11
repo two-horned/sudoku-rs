@@ -8,6 +8,8 @@ fn main() -> io::Result<()> {
     println!("Enter each sudoku puzzle as one line.");
     println!("Press Ctr-D to quit.");
 
+    let start = Instant::now();
+
     for line in io::stdin().lines() {
         let e = line?;
         println!("\nInput:       {}", e);
@@ -27,5 +29,6 @@ fn main() -> io::Result<()> {
 
         println!("Time needed: {}μs.", now.elapsed().as_micros());
     }
+    println!("Total time needed: {}ms.", start.elapsed().as_millis());
     Ok(println!("Bye."))
 }

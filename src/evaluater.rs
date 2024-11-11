@@ -41,13 +41,13 @@ pub fn eval(mut game: Game) -> Result<Game, ()> {
             }
             unreachable!()
         }
-        ShowKinds::PICKVAL(vht, mut candidates) => {
+        ShowKinds::PICKVAL(vhthi, mut candidates) => {
             let mut g;
 
             for x in 0..9 {
                 if candidates & 1 == 0 {
                     g = game.clone();
-                    g.unsafe_choose_alt(vht, x);
+                    g.unsafe_choose_alt(vhthi, x);
                     match eval(g) {
                         Ok(k) => return Ok(k),
                         _ => (),
@@ -57,10 +57,10 @@ pub fn eval(mut game: Game) -> Result<Game, ()> {
             }
             Err(())
         }
-        ShowKinds::PICKVALNC(vht, mut candidates) => {
+        ShowKinds::PICKVALNC(vhthi, mut candidates) => {
             for x in 0..9 {
                 if candidates & 1 == 0 {
-                    game.unsafe_choose_alt(vht, x);
+                    game.unsafe_choose_alt(vhthi, x);
                     match eval(game) {
                         Ok(k) => return Ok(k),
                         _ => return Err(()),
