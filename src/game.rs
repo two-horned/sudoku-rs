@@ -1,7 +1,3 @@
-/* TODO:
- * - Add smarter way to initialize puzzle
- */
-
 use std::{fmt, str::FromStr};
 
 static LOOKUP: [[usize; 4]; 81] = {
@@ -39,13 +35,36 @@ static REV_LOOKUP: [[[usize; 9]; 9]; 3] = {
 };
 
 impl Game {
+    fn init_board(board: [u8; 81]) -> Self {
+        let mut tmp = Self {
+            board,
+            house_masks: [[0xFE00; 9]; 3],
+            val_house_pos_indices: [[[0xFE00; 9]; 3]; 9],
+            showbestfree: BestFree::SOME {
+                weight: 9,
+                value: BestFreeVal::INDEX(0),
+            },
+        };
+
+        for i in 0..81 {
+            let val = board[i];
+            if val != 0 {
+                tmp.update_direct_masks(i, val as usize);
+                tmp.update_indirect_masks(i, val as usize);
+            }
+        }
+
+        tmp.update_showbestfree();
+        tmp
+    }
+
     pub fn unsafe_choose_alt(&mut self, vht: [usize; 3], idx: usize) {
         let [val, ht, hi] = vht;
         self.unsafe_choose(REV_LOOKUP[ht][hi][idx], val + 1);
     }
 
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
-        self.board[idx] = val;
+        self.board[idx] = val as u8;
         self.update_direct_masks(idx, val);
         self.update_indirect_masks(idx, val);
         self.update_showbestfree();
@@ -93,7 +112,7 @@ impl Game {
             let weight = c.count_zeros() as u8;
             let value = BestFree::SOME {
                 weight,
-                value: BestFreeVals::INDEX(i),
+                value: BestFreeVal::INDEX(i),
             };
 
             match self.showbestfree {
@@ -121,7 +140,7 @@ impl Game {
                     let weight = c.count_zeros() as u8;
                     let value = BestFree::SOME {
                         weight,
-                        value: BestFreeVals::VALHOUSE([i, j, k].map(|x| x)),
+                        value: BestFreeVal::VALHOUSE([i, j, k].map(|x| x)),
                     };
 
                     match self.showbestfree {
@@ -148,14 +167,14 @@ impl Game {
                 value: _,
             } => ShowKinds::FAILED,
             BestFree::SOME { weight: 1, value } => match value {
-                BestFreeVals::INDEX(i) => ShowKinds::PICKIDXNC(i, self.candidates(i)),
-                BestFreeVals::VALHOUSE([i, j, k]) => {
+                BestFreeVal::INDEX(i) => ShowKinds::PICKIDXNC(i, self.candidates(i)),
+                BestFreeVal::VALHOUSE([i, j, k]) => {
                     ShowKinds::PICKVALNC([i, j, k], self.val_house_pos_indices[i][j][k])
                 }
             },
             BestFree::SOME { weight: _, value } => match value {
-                BestFreeVals::INDEX(i) => ShowKinds::PICKIDX(i, self.candidates(i)),
-                BestFreeVals::VALHOUSE([i, j, k]) => {
+                BestFreeVal::INDEX(i) => ShowKinds::PICKIDX(i, self.candidates(i)),
+                BestFreeVal::VALHOUSE([i, j, k]) => {
                     ShowKinds::PICKVAL([i, j, k], self.val_house_pos_indices[i][j][k])
                 }
             },
@@ -173,7 +192,7 @@ impl FromStr for Game {
     type Err = ParseGameError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let choices: [_; 81] = {
+        let board: [_; 81] = {
             let chars: Vec<_> = s
                 .chars()
                 .map(|c| match c as u8 {
@@ -188,20 +207,7 @@ impl FromStr for Game {
             }
         };
 
-        let mut tmp = Self {
-            board: [0; 81],
-            house_masks: [[0xFE00; 9]; 3],
-            val_house_pos_indices: [[[0xFE00; 9]; 3]; 9],
-            showbestfree: BestFree::NONE
-        };
-
-        for i in 0..81 {
-            if choices[i] != 0 {
-                tmp.unsafe_choose(i, choices[i] as usize);
-            }
-        }
-
-        Ok(tmp)
+        Ok(Game::init_board(board))
     }
 }
 
@@ -221,7 +227,7 @@ impl fmt::Display for Game {
 }
 
 #[derive(Clone, Copy)]
-pub enum BestFreeVals {
+pub enum BestFreeVal {
     INDEX(usize),
     VALHOUSE([usize; 3]),
 }
@@ -229,7 +235,7 @@ pub enum BestFreeVals {
 #[derive(Clone, Copy)]
 pub enum BestFree {
     NONE,
-    SOME { weight: u8, value: BestFreeVals },
+    SOME { weight: u8, value: BestFreeVal },
 }
 
 pub enum ShowKinds {
@@ -249,7 +255,7 @@ pub enum ParseGameError {
 
 #[derive(Clone)]
 pub struct Game {
-    board: [usize; 81],
+    board: [u8; 81],
     house_masks: [[u16; 9]; 3],
     val_house_pos_indices: [[[u16; 9]; 3]; 9],
     showbestfree: BestFree,
