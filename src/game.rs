@@ -76,10 +76,8 @@ impl Game {
             let hi = houses[ht];
             self.house_masks[ht][hi] |= mask;
             let mask = 1 << houses[ht ^ 1];
-            for v in 0..9 {
-                self.val_house_pos_indices[v][ht][hi] |= mask;
-            }
             for si in 0..9 {
+                self.val_house_pos_indices[si][ht][hi] |= mask;
                 let local_idx = REV_LOOKUP[ht][hi][si];
                 let local_houses = LOOKUP[local_idx];
                 for lht in 0..3 {
@@ -134,7 +132,7 @@ impl Game {
                     let weight = c.count_zeros() as u8;
                     let value = BestFree::SOME {
                         weight,
-                        value: BestFreeVal::VALHOUSE([i, j, k].map(|x| x)),
+                        value: BestFreeVal::VALHOUSE([i, j, k]),
                     };
 
                     match self.showbestfree {
