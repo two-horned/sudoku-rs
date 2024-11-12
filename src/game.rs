@@ -123,6 +123,9 @@ impl Game {
                     if weight < w {
                         self.showbestfree = value
                     }
+                    if weight < 2 {
+                        return;
+                    }
                 }
                 _ => self.showbestfree = value,
             }
@@ -151,6 +154,9 @@ impl Game {
                             if weight < w {
                                 self.showbestfree = value
                             }
+                            if weight < 2 {
+                                return;
+                            }
                         }
                         _ => self.showbestfree = value,
                     }
@@ -162,16 +168,6 @@ impl Game {
     pub fn showbestfree(&self) -> ShowKinds {
         match self.showbestfree {
             BestFree::NONE => ShowKinds::SOLVED,
-            BestFree::SOME {
-                weight: 0,
-                value: _,
-            } => ShowKinds::FAILED,
-            BestFree::SOME { weight: 1, value } => match value {
-                BestFreeVal::INDEX(i) => ShowKinds::PICKIDXNC(i, self.candidates(i)),
-                BestFreeVal::VALHOUSE([i, j, k]) => {
-                    ShowKinds::PICKVALNC([i, j, k], self.val_house_pos_indices[i][j][k])
-                }
-            },
             BestFree::SOME { weight: _, value } => match value {
                 BestFreeVal::INDEX(i) => ShowKinds::PICKIDX(i, self.candidates(i)),
                 BestFreeVal::VALHOUSE([i, j, k]) => {
@@ -239,9 +235,7 @@ pub enum BestFree {
 }
 
 pub enum ShowKinds {
-    PICKIDXNC(usize, u16),
     PICKIDX(usize, u16),
-    PICKVALNC([usize; 3], u16),
     PICKVAL([usize; 3], u16),
     SOLVED,
     FAILED,

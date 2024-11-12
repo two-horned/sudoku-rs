@@ -6,7 +6,7 @@
 
 use crate::game::{Game, ShowKinds};
 
-pub fn eval(mut game: Game) -> Result<Game, ()> {
+pub fn eval(game: Game) -> Result<Game, ()> {
     //std::thread::sleep(std::time::Duration::from_millis(500));
     //println!("Game {}", game);
     match game.showbestfree() {
@@ -14,7 +14,6 @@ pub fn eval(mut game: Game) -> Result<Game, ()> {
         ShowKinds::SOLVED => Ok(game),
         ShowKinds::PICKIDX(idx, mut candidates) => {
             let mut g;
-
             for x in 1..10 {
                 if candidates & 1 == 0 {
                     g = game.clone();
@@ -28,22 +27,8 @@ pub fn eval(mut game: Game) -> Result<Game, ()> {
             }
             Err(())
         }
-        ShowKinds::PICKIDXNC(idx, mut candidates) => {
-            for x in 1..10 {
-                if candidates & 1 == 0 {
-                    game.unsafe_choose(idx, x);
-                    match eval(game) {
-                        Ok(k) => return Ok(k),
-                        _ => return Err(()),
-                    }
-                }
-                candidates >>= 1;
-            }
-            unreachable!()
-        }
         ShowKinds::PICKVAL(vhthi, mut candidates) => {
             let mut g;
-
             for x in 0..9 {
                 if candidates & 1 == 0 {
                     g = game.clone();
@@ -56,19 +41,6 @@ pub fn eval(mut game: Game) -> Result<Game, ()> {
                 candidates >>= 1;
             }
             Err(())
-        }
-        ShowKinds::PICKVALNC(vhthi, mut candidates) => {
-            for x in 0..9 {
-                if candidates & 1 == 0 {
-                    game.unsafe_choose_alt(vhthi, x);
-                    match eval(game) {
-                        Ok(k) => return Ok(k),
-                        _ => return Err(()),
-                    }
-                }
-                candidates >>= 1;
-            }
-            unreachable!()
         }
     }
 }
