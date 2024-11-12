@@ -49,8 +49,7 @@ impl Game {
         for i in 0..81 {
             let val = board[i];
             if val != 0 {
-                tmp.update_direct_masks(i, val as usize);
-                tmp.update_indirect_masks(i, val as usize);
+                tmp.update_masks(i, val as usize);
             }
         }
 
@@ -65,29 +64,21 @@ impl Game {
 
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
         self.board[idx] = val as u8;
-        self.update_direct_masks(idx, val);
-        self.update_indirect_masks(idx, val);
+        self.update_masks(idx, val);
         self.update_showbestfree();
     }
 
-    fn update_direct_masks(&mut self, idx: usize, val: usize) {
-        let mask = 1 << (val - 1);
-        let rcsi = LOOKUP[idx];
+    fn update_masks(&mut self, idx: usize, val: usize) {
+        let val = val - 1;
+        let mask = 1 << val;
+        let houses = LOOKUP[idx];
         for ht in 0..3 {
-            let hi = rcsi[ht];
+            let hi = houses[ht];
             self.house_masks[ht][hi] |= mask;
-            let mask = 1 << rcsi[ht ^ 1];
+            let mask = 1 << houses[ht ^ 1];
             for v in 0..9 {
                 self.val_house_pos_indices[v][ht][hi] |= mask;
             }
-        }
-    }
-
-    fn update_indirect_masks(&mut self, idx: usize, val: usize) {
-        let houses = LOOKUP[idx];
-        let val = val - 1;
-        for ht in 0..3 {
-            let hi = houses[ht];
             for si in 0..9 {
                 let local_idx = REV_LOOKUP[ht][hi][si];
                 let local_houses = LOOKUP[local_idx];
