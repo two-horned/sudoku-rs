@@ -39,7 +39,7 @@ impl Game {
         let mut tmp = Self {
             board,
             house_masks: [[0xFE00; 9]; 3],
-            val_house_pos_indices: [[[0xFE00; 9]; 3]; 9],
+            val_house_pos_indices: [[[0xFE00; 9]; 3]; 10],
             showbestfree: BestFree::SOME {
                 weight: 9,
                 value: BestFreeVal::INDEX(0),
@@ -59,7 +59,7 @@ impl Game {
 
     pub fn unsafe_choose_alt(&mut self, vht: [usize; 3], idx: usize) {
         let [val, ht, hi] = vht;
-        self.unsafe_choose(REV_LOOKUP[ht][hi][idx], val + 1);
+        self.unsafe_choose(REV_LOOKUP[ht][hi][idx], val);
     }
 
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
@@ -69,15 +69,14 @@ impl Game {
     }
 
     fn update_masks(&mut self, idx: usize, val: usize) {
-        let val = val - 1;
-        let mask = 1 << val;
+        let mask = 1 << (val - 1);
         let houses = LOOKUP[idx];
         for ht in 0..3 {
             let hi = houses[ht];
             self.house_masks[ht][hi] |= mask;
             let mask = 1 << houses[ht ^ 1];
+            self.val_house_pos_indices[0][ht][hi] |= mask;
             for si in 0..9 {
-                self.val_house_pos_indices[si][ht][hi] |= mask;
                 let local_idx = REV_LOOKUP[ht][hi][si];
                 let local_houses = LOOKUP[local_idx];
                 for lht in 0..3 {
@@ -120,15 +119,15 @@ impl Game {
             }
         }
 
-        for i in 0..9 {
-            let val_mask = 1 << i;
+        for i in 1..10 {
+            let val_mask = 1 << (i - 1);
             for j in 0..3 {
                 for k in 0..9 {
                     if self.house_masks[j][k] & val_mask != 0 {
                         continue;
                     }
 
-                    let c = self.val_house_pos_indices[i][j][k];
+                    let c = self.pos_indices(i, j, k);
                     let weight = c.count_zeros() as u8;
                     let value = BestFree::SOME {
                         weight,
@@ -160,7 +159,7 @@ impl Game {
             BestFree::SOME { weight: _, value } => match value {
                 BestFreeVal::INDEX(i) => ShowKinds::PICKIDX(i, self.candidates(i)),
                 BestFreeVal::VALHOUSE([i, j, k]) => {
-                    ShowKinds::PICKVAL([i, j, k], self.val_house_pos_indices[i][j][k])
+                    ShowKinds::PICKVAL([i, j, k], self.pos_indices(i, j, k))
                 }
             },
         }
@@ -170,6 +169,11 @@ impl Game {
         let [i, j, k, _] = LOOKUP[idx];
         self.house_masks[0][i] | self.house_masks[1][j] | self.house_masks[2][k]
     }
+
+    fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
+        self.val_house_pos_indices[0][ht][hi] | self.val_house_pos_indices[val][ht][hi]
+    }
+
 }
 
 #[rustfmt::skip]
@@ -240,6 +244,6 @@ pub enum ParseGameError {
 pub struct Game {
     board: [u8; 81],
     house_masks: [[u16; 9]; 3],
-    val_house_pos_indices: [[[u16; 9]; 3]; 9],
+    val_house_pos_indices: [[[u16; 9]; 3]; 10],
     showbestfree: BestFree,
 }
