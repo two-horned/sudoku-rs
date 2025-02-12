@@ -4,3 +4,5 @@ study*
 *.py
 *.sh
 *.data
+flamegraph.svg
+perf.*
