@@ -173,10 +173,8 @@ impl Game {
     fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
         self.val_house_pos_indices[0][ht][hi] | self.val_house_pos_indices[val][ht][hi]
     }
-
 }
 
-#[rustfmt::skip]
 impl FromStr for Game {
     type Err = ParseGameError;
 
