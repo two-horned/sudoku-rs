@@ -180,15 +180,16 @@ impl FromStr for Game {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let board: [_; 81] = {
-            let chars: Vec<_> = s
+            match s
                 .chars()
                 .map(|c| match c as u8 {
                     46 => Ok(0),
-                    x if 47 < x && x < 58 => Ok(x - 48),
+                    x @ 49..58 => Ok(x - 48),
                     _ => Err(ParseGameError::UnknownCharacter(c)),
                 })
-                .collect::<Result<Vec<_>, _>>()?;
-            match chars.try_into() {
+                .collect::<Result<Vec<_>, _>>()?
+                .try_into()
+            {
                 Err(_) => return Err(ParseGameError::IncorrectLength),
                 Ok(x) => x,
             }
@@ -200,16 +201,16 @@ impl FromStr for Game {
 
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s: String = self
-            .board
-            .map(|x| match x {
-                0 => '.',
-                x => char::from_digit(x as u32, 10).unwrap(),
-            })
-            .iter()
-            .collect();
-
-        write!(f, "{}", s)
+        f.write_str(
+            &self
+                .board
+                .map(|x| match x {
+                    0 => '.',
+                    x => char::from_digit(x as u32, 10).unwrap(),
+                })
+                .iter()
+                .collect::<String>(),
+        )
     }
 }
 
