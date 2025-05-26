@@ -6,7 +6,7 @@
 
 use crate::game::{Game, ShowKinds};
 
-pub fn eval(game: Game) -> Result<Game, ()> {
+pub fn eval(mut game: Game) -> Result<Game, ()> {
     //std::thread::sleep(std::time::Duration::from_millis(500));
     //println!("Game {}", game);
     match game.showbestfree() {

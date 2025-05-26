@@ -40,10 +40,6 @@ impl Game {
             board,
             house_masks: [[0xFE00; 9]; 3],
             val_house_pos_indices: [[[0xFE00; 9]; 3]; 10],
-            showbestfree: BestFree::SOME {
-                weight: 9,
-                value: BestFreeVal::INDEX(0),
-            },
         };
 
         for i in 0..81 {
@@ -53,7 +49,6 @@ impl Game {
             }
         }
 
-        tmp.update_showbestfree();
         tmp
     }
 
@@ -65,7 +60,6 @@ impl Game {
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
         self.board[idx] = val as u8;
         self.update_masks(idx, val);
-        self.update_showbestfree();
     }
 
     fn update_masks(&mut self, idx: usize, val: usize) {
@@ -88,8 +82,9 @@ impl Game {
         }
     }
 
-    fn update_showbestfree(&mut self) {
-        self.showbestfree = BestFree::NONE;
+    pub fn showbestfree(&mut self) -> ShowKinds {
+        let mut best_value = ShowKinds::SOLVED;
+        let mut best_weight = None;
 
         for i in 0..81 {
             if self.board[i] != 0 {
@@ -98,25 +93,23 @@ impl Game {
 
             let c = self.candidates(i);
             let weight = c.count_zeros() as u8;
-            let value = BestFree::SOME {
-                weight,
-                value: BestFreeVal::INDEX(i),
-            };
+            let value = ShowKinds::PICKIDX(i, c);
 
-            match self.showbestfree {
-                BestFree::SOME {
-                    weight: w,
-                    value: _,
-                } => {
-                    if weight < w {
-                        self.showbestfree = value
-                    }
-                    if weight < 2 {
-                        return;
-                    }
-                }
-                _ => self.showbestfree = value,
+            if weight < 2 {
+                return value;
             }
+
+            match best_weight {
+                Some(w) if w <= weight => (),
+                _ => {
+                    best_weight = Some(weight);
+                    best_value = value;
+                }
+            }
+        }
+
+        if best_weight.is_none() {
+            return best_value;
         }
 
         for i in 1..10 {
@@ -129,40 +122,23 @@ impl Game {
 
                     let c = self.pos_indices(i, j, k);
                     let weight = c.count_zeros() as u8;
-                    let value = BestFree::SOME {
-                        weight,
-                        value: BestFreeVal::VALHOUSE([i, j, k]),
-                    };
+                    let value = ShowKinds::PICKVAL([i, j, k], c);
 
-                    match self.showbestfree {
-                        BestFree::SOME {
-                            weight: w,
-                            value: _,
-                        } => {
-                            if weight < w {
-                                self.showbestfree = value
-                            }
-                            if weight < 2 {
-                                return;
-                            }
+                    if weight < 2 {
+                        return value;
+                    }
+
+                    match best_weight {
+                        Some(w) if w <= weight => (),
+                        _ => {
+                            best_weight = Some(weight);
+                            best_value = value;
                         }
-                        _ => self.showbestfree = value,
                     }
                 }
             }
         }
-    }
-
-    pub fn showbestfree(&self) -> ShowKinds {
-        match self.showbestfree {
-            BestFree::NONE => ShowKinds::SOLVED,
-            BestFree::SOME { weight: _, value } => match value {
-                BestFreeVal::INDEX(i) => ShowKinds::PICKIDX(i, self.candidates(i)),
-                BestFreeVal::VALHOUSE([i, j, k]) => {
-                    ShowKinds::PICKVAL([i, j, k], self.pos_indices(i, j, k))
-                }
-            },
-        }
+        best_value
     }
 
     fn candidates(&self, idx: usize) -> u16 {
@@ -214,18 +190,6 @@ impl fmt::Display for Game {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum BestFreeVal {
-    INDEX(usize),
-    VALHOUSE([usize; 3]),
-}
-
-#[derive(Clone, Copy)]
-pub enum BestFree {
-    NONE,
-    SOME { weight: u8, value: BestFreeVal },
-}
-
 pub enum ShowKinds {
     PICKIDX(usize, u16),
     PICKVAL([usize; 3], u16),
@@ -244,5 +208,4 @@ pub struct Game {
     board: [u8; 81],
     house_masks: [[u16; 9]; 3],
     val_house_pos_indices: [[[u16; 9]; 3]; 10],
-    showbestfree: BestFree,
 }
