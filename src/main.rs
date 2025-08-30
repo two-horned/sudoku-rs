@@ -1,12 +1,14 @@
 use std::io;
 use std::str::FromStr;
 use std::time::Instant;
-use sudoku::evaluater::eval;
+use sudoku::evaluater::Evaluater;
 use sudoku::game::Game;
 
 fn main() -> io::Result<()> {
     println!("Enter each sudoku puzzle as one line.");
     println!("Press Ctr-D to quit.");
+
+    let mut evaluater = Evaluater::new();
 
     let start = Instant::now();
 
@@ -21,7 +23,7 @@ fn main() -> io::Result<()> {
                 eprintln!("{:?}", msg);
                 continue;
             }
-            Ok(x) => match eval(Game::from(x)) {
+            Ok(x) => match evaluater.eval(Game::from(x)) {
                 Ok(x) => println!("Solution:    {}", x),
                 _ => println!("Game cannot be solved."),
             },

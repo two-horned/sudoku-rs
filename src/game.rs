@@ -38,6 +38,7 @@ impl Game {
     fn init_board(board: [u8; 81]) -> Self {
         let mut tmp = Self {
             board,
+            frees: 0x1FFFFFFFFFFFFFFFFFFFF,
             house_masks: [[0xFE00; 9]; 3],
             val_house_pos_indices: [[[0xFE00; 9]; 3]; 10],
         };
@@ -45,6 +46,7 @@ impl Game {
         for i in 0..81 {
             let val = board[i];
             if val != 0 {
+                tmp.frees ^= 1 << i;
                 tmp.update_masks(i, val as usize);
             }
         }
@@ -59,6 +61,7 @@ impl Game {
 
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
         self.board[idx] = val as u8;
+        self.frees ^= 1 << idx;
         self.update_masks(idx, val);
     }
 
@@ -82,20 +85,26 @@ impl Game {
         }
     }
 
-    pub fn showbestfree(&mut self) -> ShowKinds {
+    pub fn showbestfree(&self) -> ShowKinds {
         let mut best_value = ShowKinds::SOLVED;
         let mut best_weight = None;
 
-        for i in 0..81 {
-            if self.board[i] != 0 {
-                continue;
+        let mut f = self.frees;
+
+        while f != 0 {
+            let i = f.trailing_zeros() as usize;
+            f &= f - 1;
+
+            let c = !self.candidates(i);
+            let weight = c.count_ones() as u8;
+
+            if weight == 0 {
+                return ShowKinds::FAILED;
             }
 
-            let c = self.candidates(i);
-            let weight = c.count_zeros() as u8;
             let value = ShowKinds::PICKIDX(i, c);
 
-            if weight < 2 {
+            if weight == 1 {
                 return value;
             }
 
@@ -120,11 +129,16 @@ impl Game {
                         continue;
                     }
 
-                    let c = self.pos_indices(i, j, k);
-                    let weight = c.count_zeros() as u8;
+                    let c = !self.pos_indices(i, j, k);
+                    let weight = c.count_ones() as u8;
+
+                    if weight == 0 {
+                        return ShowKinds::FAILED;
+                    }
+
                     let value = ShowKinds::PICKVAL([i, j, k], c);
 
-                    if weight < 2 {
+                    if weight == 1 {
                         return value;
                     }
 
@@ -190,6 +204,7 @@ impl fmt::Display for Game {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum ShowKinds {
     PICKIDX(usize, u16),
     PICKVAL([usize; 3], u16),
@@ -203,9 +218,10 @@ pub enum ParseGameError {
     UnknownCharacter(char),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Game {
     board: [u8; 81],
+    frees: u128,
     house_masks: [[u16; 9]; 3],
     val_house_pos_indices: [[[u16; 9]; 3]; 10],
 }
