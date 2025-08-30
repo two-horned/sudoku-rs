@@ -1,6 +1,6 @@
 use std::{fmt, str::FromStr};
 
-static LOOKUP: [[usize; 4]; 81] = {
+const LOOKUP: [[usize; 4]; 81] = {
     let mut tmp = [[0; 4]; 81];
     let (mut nine_i, mut sqr_row);
 
@@ -21,7 +21,7 @@ static LOOKUP: [[usize; 4]; 81] = {
     tmp
 };
 
-static REV_LOOKUP: [[[usize; 9]; 9]; 3] = {
+const REV_LOOKUP: [[[usize; 9]; 9]; 3] = {
     let mut tmp = [[[0; 9]; 9]; 3];
     let mut idx = 0;
     while idx < 81 {
