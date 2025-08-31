@@ -73,9 +73,8 @@ impl Game {
             self.house_masks[ht][hi] |= mask;
             let mask = 1 << houses[ht ^ 1];
             self.val_house_pos_indices[0][ht][hi] |= mask;
-            for si in 0..9 {
-                let local_idx = REV_LOOKUP[ht][hi][si];
-                let local_houses = LOOKUP[local_idx];
+            for si in (0..9).map(|x| REV_LOOKUP[ht][hi][x]) {
+                let local_houses = LOOKUP[si];
                 for lht in 0..3 {
                     let lhi = local_houses[lht];
                     let mask = 1 << local_houses[lht ^ 1];
@@ -121,13 +120,12 @@ impl Game {
             return best_value;
         }
 
-        for i in 1..10 {
-            let val_mask = 1 << (i - 1);
-            for j in 0..3 {
-                for k in 0..9 {
-                    if self.house_masks[j][k] & val_mask != 0 {
-                        continue;
-                    }
+        for j in 0..3 {
+            for k in 0..9 {
+                let mut f = !self.house_masks[j][k];
+                while f != 0 {
+                    let i = 1 + f.trailing_zeros() as usize;
+                    f &= f - 1;
 
                     let c = !self.pos_indices(i, j, k);
                     let weight = c.count_ones() as u8;
