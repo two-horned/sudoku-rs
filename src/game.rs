@@ -192,11 +192,11 @@ impl fmt::Display for Game {
         f.write_str(
             &self
                 .board
-                .map(|x| match x {
+                .iter()
+                .map(|&x| match x {
                     0 => '.',
                     x => char::from_digit(x as u32, 10).unwrap(),
                 })
-                .iter()
                 .collect::<String>(),
         )
     }
