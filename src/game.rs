@@ -39,7 +39,7 @@ impl Game {
         let mut tmp = Self {
             board,
             frees: 0x1FFFFFFFFFFFFFFFFFFFF,
-            house_masks: [[0xFE00; 9]; 3],
+            house_masks: [[0x1FF; 9]; 3],
             val_house_pos_indices: [[[0xFE00; 9]; 3]; 10],
         };
 
@@ -70,7 +70,7 @@ impl Game {
         let houses = LOOKUP[idx];
         for ht in 0..3 {
             let hi = houses[ht];
-            self.house_masks[ht][hi] |= mask;
+            self.house_masks[ht][hi] ^= mask;
             let mask = 1 << houses[ht ^ 1];
             self.val_house_pos_indices[0][ht][hi] |= mask;
             for si in (0..9).map(|x| REV_LOOKUP[ht][hi][x]) {
@@ -94,7 +94,7 @@ impl Game {
             let i = f.trailing_zeros() as usize;
             f &= f - 1;
 
-            let c = !self.candidates(i);
+            let c = self.candidates(i);
             let weight = c.count_ones() as u8;
 
             if weight == 0 {
@@ -122,7 +122,7 @@ impl Game {
 
         for j in 0..3 {
             for k in 0..9 {
-                let mut f = !self.house_masks[j][k];
+                let mut f = self.house_masks[j][k];
                 while f != 0 {
                     let i = 1 + f.trailing_zeros() as usize;
                     f &= f - 1;
@@ -155,7 +155,7 @@ impl Game {
 
     fn candidates(&self, idx: usize) -> u16 {
         let [i, j, k, _] = LOOKUP[idx];
-        self.house_masks[0][i] | self.house_masks[1][j] | self.house_masks[2][k]
+        self.house_masks[0][i] & self.house_masks[1][j] & self.house_masks[2][k]
     }
 
     fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
