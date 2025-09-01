@@ -86,7 +86,7 @@ impl Game {
 
     pub fn showbestfree(&self) -> ShowKinds {
         let mut best_value = ShowKinds::SOLVED;
-        let mut best_weight = None;
+        let mut best_weight = 10;
 
         let mut f = self.frees;
 
@@ -95,29 +95,16 @@ impl Game {
             f &= f - 1;
 
             let c = self.candidates(i);
-            let weight = c.count_ones() as u8;
 
-            if weight == 0 {
-                return ShowKinds::FAILED;
-            }
-
-            let value = ShowKinds::PICKIDX(i, c);
-
-            if weight == 1 {
-                return value;
-            }
-
-            match best_weight {
-                Some(w) if w <= weight => (),
-                _ => {
-                    best_weight = Some(weight);
-                    best_value = value;
+            match c.count_ones() {
+                0 => return ShowKinds::FAILED,
+                1 => return ShowKinds::PICKIDX(i, c),
+                w if w < best_weight => {
+                    best_weight = w;
+                    best_value = ShowKinds::PICKIDX(i, c);
                 }
+                _ => (),
             }
-        }
-
-        if best_weight.is_none() {
-            return best_value;
         }
 
         for j in 0..3 {
@@ -128,28 +115,20 @@ impl Game {
                     f &= f - 1;
 
                     let c = !self.pos_indices(i, j, k);
-                    let weight = c.count_ones() as u8;
 
-                    if weight == 0 {
-                        return ShowKinds::FAILED;
-                    }
-
-                    let value = ShowKinds::PICKVAL([i, j, k], c);
-
-                    if weight == 1 {
-                        return value;
-                    }
-
-                    match best_weight {
-                        Some(w) if w <= weight => (),
-                        _ => {
-                            best_weight = Some(weight);
-                            best_value = value;
+                    match c.count_ones() {
+                        0 => return ShowKinds::FAILED,
+                        1 => return ShowKinds::PICKVAL([i, j, k], c),
+                        w if w < best_weight => {
+                            best_weight = w;
+                            best_value = ShowKinds::PICKVAL([i, j, k], c);
                         }
+                        _ => (),
                     }
                 }
             }
         }
+
         best_value
     }
 
