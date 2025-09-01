@@ -72,7 +72,7 @@ impl Game {
             let hi = houses[ht];
             self.house_masks[ht][hi] ^= mask;
             let mask = 1 << houses[ht ^ 1];
-            self.val_house_pos_indices[0][ht][hi] |= mask;
+            self.val_house_pos_indices[0][ht][hi] ^= mask;
             for si in (0..9).map(|x| REV_LOOKUP[ht][hi][x]) {
                 let local_houses = LOOKUP[si];
                 for lht in 0..3 {
