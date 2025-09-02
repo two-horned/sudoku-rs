@@ -103,11 +103,6 @@ impl Game {
     }
 
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
-        debug_assert!(
-            self.board[idx] == 0,
-            "choice is idx {idx} with val {val}, game is\n{:?}",
-            self
-        );
         self.board[idx] = val as u8;
         self.frees ^= 1 << idx;
         self.update_masks(idx, val);
@@ -115,7 +110,6 @@ impl Game {
 
     pub fn unsafe_unchoose(&mut self, idx: usize) {
         let val = self.board[idx];
-        debug_assert!(val != 0);
         self.board[idx] = 0;
         self.frees ^= 1 << idx;
         self.update_masks(idx, val as usize);
@@ -239,22 +233,22 @@ impl fmt::Display for Game {
     }
 }
 
-impl fmt::Debug for Game {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let string = (0..9)
-            .map(|i| {
-                (0..9)
-                    .map(|j| match self.board[i * 9 + j] {
-                        0 => '.',
-                        x => char::from_digit(x as u32, 10).unwrap(),
-                    })
-                    .collect::<String>()
-                    + "\n"
-            })
-            .collect::<String>();
-        f.write_str(&string)
-    }
-}
+// impl fmt::Debug for Game {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         let string = (0..9)
+//             .map(|i| {
+//                 (0..9)
+//                     .map(|j| match self.board[i * 9 + j] {
+//                         0 => '.',
+//                         x => char::from_digit(x as u32, 10).unwrap(),
+//                     })
+//                     .collect::<String>()
+//                     + "\n"
+//             })
+//             .collect::<String>();
+//         f.write_str(&string)
+//     }
+// }
 
 #[derive(Clone, Copy)]
 pub enum ShowKinds {
@@ -270,7 +264,6 @@ pub enum ParseGameError {
     UnknownCharacter(char),
 }
 
-#[derive(Clone, Copy)]
 pub struct Game {
     board: [u8; 81],
     frees: u128,

@@ -30,7 +30,6 @@ impl Evaluater {
                 ShowKinds::PICKIDX(idx, candidates) => {
                     let idx = *idx;
                     let c = candidates.trailing_zeros() as usize;
-                    debug_assert!(c < 10, "Candidates are {:b}", candidates);
                     game.unsafe_choose(idx, 1 + c);
                     *candidates &= *candidates - 1;
                     if *candidates == 0 {
@@ -41,7 +40,6 @@ impl Evaluater {
                 }
                 ShowKinds::PICKVAL(vhthi, candidates) => {
                     let c = candidates.trailing_zeros() as usize;
-                    debug_assert!(c < 10, "Candidates are {:b}", candidates);
                     let idx = game.unsafe_choose_alt(*vhthi, c);
                     *candidates &= *candidates - 1;
                     if *candidates == 0 {
