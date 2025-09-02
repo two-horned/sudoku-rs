@@ -34,6 +34,46 @@ const REV_LOOKUP: [[[usize; 9]; 9]; 3] = {
     tmp
 };
 
+const RAY_MAKER: [u16; 8] = {
+    let mut tmp = [0; 8];
+    let mut i = 0;
+    while i < 8 {
+        let mut f: usize = i;
+        while f != 0 {
+            let c = f.trailing_zeros();
+            f &= f - 1;
+            tmp[i] ^= 0b111 << 3 * c;
+        }
+        i += 1;
+    }
+    tmp
+};
+
+const YAR_MAKER: [u16; 8] = {
+    let mut tmp = [0; 8];
+    let mut i: u16 = 0;
+    while i < 8 {
+        tmp[i as usize] = i ^ (i << 3) ^ (i << 6);
+        i += 1;
+    }
+    tmp
+};
+
+const fn get_ray_r(mask: u16, i: usize) -> u16 {
+    let j = 0b111 & mask >> 3 * i;
+    RAY_MAKER[j as usize]
+}
+
+const fn get_ray_c(mask: u16, i: usize) -> u16 {
+    let j = 0b111 & 0b10101 * (0b100100100 & mask << 2 - i) >> 6;
+    RAY_MAKER[j as usize]
+}
+
+const fn get_yar_r(mask: u16, i: usize) -> u16 {
+    let j = 0b111 & mask >> 3 * i;
+    YAR_MAKER[j as usize]
+}
+
 impl Game {
     fn init_board(board: [u8; 81]) -> Self {
         let mut tmp = Self {
@@ -41,6 +81,7 @@ impl Game {
             frees: 0x1FFFFFFFFFFFFFFFFFFFF,
             house_masks: [[0x1FF; 9]; 3],
             val_house_pos_indices: [[[0xFE00; 9]; 3]; 10],
+            value_masks: [[0xFE00; 3]; 9],
         };
 
         for i in 0..81 {
@@ -66,13 +107,14 @@ impl Game {
     }
 
     fn update_masks(&mut self, idx: usize, val: usize) {
-        let mask = 1 << (val - 1);
+        let mask = 1 << val - 1;
         let houses = LOOKUP[idx];
         for ht in 0..3 {
             let hi = houses[ht];
             self.house_masks[ht][hi] ^= mask;
             let mask = 1 << houses[ht ^ 1];
             self.val_house_pos_indices[0][ht][hi] ^= mask;
+            self.value_masks[val - 1][ht] ^= 1 << hi;
             for si in (0..9).map(|x| REV_LOOKUP[ht][hi][x]) {
                 let local_houses = LOOKUP[si];
                 for lht in 0..3 {
@@ -138,6 +180,26 @@ impl Game {
     }
 
     fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
+        let val = val - 1;
+        let res = self.val_house_pos_indices[0][ht][hi]
+            | match ht {
+                0 => self.value_masks[val][1] | get_ray_r(self.value_masks[val][2], hi / 3),
+                1 => self.value_masks[val][0] | get_ray_c(self.value_masks[val][2], hi / 3),
+                2 => {
+                    get_ray_r(self.value_masks[val][0], hi / 3)
+                        | get_yar_r(self.value_masks[val][1], hi % 3)
+                }
+                _ => {
+                    let val = val + 1;
+                    self.val_house_pos_indices[val][ht][hi]
+                }
+                // _ => unreachable!()
+            };
+        debug_assert!(res == self.old_pos_indices(val + 1, ht, hi));
+        res
+    }
+
+    fn old_pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
         self.val_house_pos_indices[0][ht][hi] | self.val_house_pos_indices[val][ht][hi]
     }
 }
@@ -201,4 +263,5 @@ pub struct Game {
     frees: u128,
     house_masks: [[u16; 9]; 3],
     val_house_pos_indices: [[[u16; 9]; 3]; 10],
+    value_masks: [[u16; 3]; 9],
 }
