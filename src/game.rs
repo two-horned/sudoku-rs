@@ -88,7 +88,6 @@ impl Game {
         while i < 81 {
             let val = board[i];
             if val != 0 {
-                tmp.frees ^= 1 << i;
                 tmp.update_masks(i, val as usize);
             }
             i += 1;
@@ -106,18 +105,17 @@ impl Game {
 
     pub const fn unsafe_choose(&mut self, idx: usize, val: usize) {
         self.board[idx] = val as u8;
-        self.frees ^= 1 << idx;
         self.update_masks(idx, val);
     }
 
     pub const fn unsafe_unchoose(&mut self, idx: usize) {
         let val = self.board[idx];
         self.board[idx] = 0;
-        self.frees ^= 1 << idx;
         self.update_masks(idx, val as usize);
     }
 
     const fn update_masks(&mut self, idx: usize, val: usize) {
+        self.frees ^= 1 << idx;
         let mask = 1 << val - 1;
         let houses = LOOKUP[idx];
         let mut ht = 0;
