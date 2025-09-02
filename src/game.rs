@@ -80,7 +80,7 @@ impl Game {
             board,
             frees: 0x1FFFFFFFFFFFFFFFFFFFF,
             house_masks: [[0x1FF; 9]; 3],
-            val_house_pos_indices: [[[0xFE00; 9]; 3]; 10],
+            occupied: [[0xFE00; 9]; 3],
             value_masks: [[0xFE00; 3]; 9],
         };
 
@@ -113,16 +113,8 @@ impl Game {
             let hi = houses[ht];
             self.house_masks[ht][hi] ^= mask;
             let mask = 1 << houses[ht ^ 1];
-            self.val_house_pos_indices[0][ht][hi] ^= mask;
+            self.occupied[ht][hi] ^= mask;
             self.value_masks[val - 1][ht] ^= 1 << hi;
-            for si in (0..9).map(|x| REV_LOOKUP[ht][hi][x]) {
-                let local_houses = LOOKUP[si];
-                for lht in 0..3 {
-                    let lhi = local_houses[lht];
-                    let mask = 1 << local_houses[lht ^ 1];
-                    self.val_house_pos_indices[val][lht][lhi] |= mask;
-                }
-            }
         }
     }
 
@@ -181,26 +173,15 @@ impl Game {
 
     fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
         let val = val - 1;
-        let res = self.val_house_pos_indices[0][ht][hi]
+        self.occupied[ht][hi]
             | match ht {
                 0 => self.value_masks[val][1] | get_ray_r(self.value_masks[val][2], hi / 3),
                 1 => self.value_masks[val][0] | get_ray_c(self.value_masks[val][2], hi / 3),
-                2 => {
+                _ => {
                     get_ray_r(self.value_masks[val][0], hi / 3)
                         | get_yar_r(self.value_masks[val][1], hi % 3)
                 }
-                _ => {
-                    let val = val + 1;
-                    self.val_house_pos_indices[val][ht][hi]
-                }
-                // _ => unreachable!()
-            };
-        debug_assert!(res == self.old_pos_indices(val + 1, ht, hi));
-        res
-    }
-
-    fn old_pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
-        self.val_house_pos_indices[0][ht][hi] | self.val_house_pos_indices[val][ht][hi]
+            }
     }
 }
 
@@ -262,6 +243,6 @@ pub struct Game {
     board: [u8; 81],
     frees: u128,
     house_masks: [[u16; 9]; 3],
-    val_house_pos_indices: [[[u16; 9]; 3]; 10],
+    occupied: [[u16; 9]; 3],
     value_masks: [[u16; 3]; 9],
 }
