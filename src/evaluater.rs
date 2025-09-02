@@ -22,7 +22,7 @@ impl Evaluater {
                         return Err(());
                     } else {
                         let idx = self.buffer[level].0;
-                        game.unsafe_unchoose(idx);
+                        game.unsafe_unchoose(idx as usize);
                         level -= 1;
                         continue;
                     }
@@ -36,7 +36,7 @@ impl Evaluater {
                         self.buffer[level].1 = ShowKinds::FAILED;
                     }
                     level += 1;
-                    self.buffer[level] = (idx, game.showbestfree());
+                    self.buffer[level] = (idx as u8, game.showbestfree());
                 }
                 ShowKinds::PICKVAL(vhthi, candidates) => {
                     let c = candidates.trailing_zeros() as usize;
@@ -46,7 +46,7 @@ impl Evaluater {
                         self.buffer[level].1 = ShowKinds::FAILED;
                     }
                     level += 1;
-                    self.buffer[level] = (idx, game.showbestfree());
+                    self.buffer[level] = (idx as u8, game.showbestfree());
                 }
             }
         }
@@ -54,5 +54,5 @@ impl Evaluater {
 }
 
 pub struct Evaluater {
-    buffer: [(usize, ShowKinds); 81],
+    buffer: [(u8, ShowKinds); 81],
 }

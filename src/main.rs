@@ -26,7 +26,7 @@ fn main() -> io::Result<()> {
                 stderr.write(format!("{:?}\n", err).as_bytes())?;
                 continue;
             }
-            Ok(x) => match evaluater.eval(Game::from(x)) {
+            Ok(x) => match evaluater.eval(x) {
                 Ok(x) => stdout.write_all(format!("Solution:    {}\n", x).as_bytes())?,
                 _ => stdout.write_all(b"Game cannot be solved.\n")?,
             },

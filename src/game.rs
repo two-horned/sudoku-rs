@@ -133,48 +133,57 @@ impl Game {
         let mut best_value = ShowKinds::SOLVED;
         let mut best_weight = 10;
 
-        let mut f = self.frees;
-        while f != 0 {
-            let i = f.trailing_zeros() as usize;
-            f &= f - 1;
+        {
+            let mut f = self.frees;
+            while f != 0 {
+                let i = f.trailing_zeros() as usize;
+                f &= f - 1;
 
-            let c = self.candidates(i);
+                let c = self.candidates(i);
 
-            match c.count_ones() {
-                0 => return ShowKinds::FAILED,
-                1 => return ShowKinds::PICKIDX(i, c),
-                w if w < best_weight => {
-                    best_weight = w;
-                    best_value = ShowKinds::PICKIDX(i, c);
+                match c.count_ones() {
+                    0 => return ShowKinds::FAILED,
+                    1 => return ShowKinds::PICKIDX(i, c),
+                    w if w < best_weight => {
+                        best_weight = w;
+                        best_value = ShowKinds::PICKIDX(i, c);
+                    }
+                    _ => (),
                 }
-                _ => (),
             }
         }
 
-        let mut j = 0;
-        while j < 3 {
-            let mut k = 0;
-            while k < 9 {
-                let mut f = self.house_masks[j][k];
-                while f != 0 {
-                    let i = f.trailing_zeros() as usize;
-                    f &= f - 1;
+        {
+            let mut i = 0;
+            while i < 3 {
+                let mut j = 0;
+                while j < 3 {
+                    let mut k = 0;
+                    while k < 3 {
+                        let t = 3 * j + k;
+                        let mut f = self.house_masks[i][t];
+                        while f != 0 {
+                            let v = f.trailing_zeros() as usize;
+                            f &= f - 1;
 
-                    let c = !self.pos_indices(i, j, k);
+                            let c = !self.pos_indices(v, i, t, j, k);
 
-                    match c.count_ones() {
-                        0 => return ShowKinds::FAILED,
-                        1 => return ShowKinds::PICKVAL([i, j, k], c),
-                        w if w < best_weight => {
-                            best_weight = w;
-                            best_value = ShowKinds::PICKVAL([i, j, k], c);
+                            match c.count_ones() {
+                                0 => return ShowKinds::FAILED,
+                                1 => return ShowKinds::PICKVAL([v, i, t], c),
+                                w if w < best_weight => {
+                                    best_weight = w;
+                                    best_value = ShowKinds::PICKVAL([v, i, t], c);
+                                }
+                                _ => (),
+                            }
                         }
-                        _ => (),
+                        k += 1;
                     }
+                    j += 1;
                 }
-                k += 1;
+                i += 1;
             }
-            j += 1;
         }
 
         best_value
@@ -185,14 +194,14 @@ impl Game {
         self.house_masks[0][i] & self.house_masks[1][j] & self.house_masks[2][k]
     }
 
-    const fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
+    const fn pos_indices(&self, val: usize, ht: usize, hi: usize, rwhi: usize, clhi: usize) -> u16 {
         self.occupied[ht][hi]
             | match ht {
-                0 => self.value_masks[val][1] | get_ray_r(self.value_masks[val][2], hi / 3),
-                1 => self.value_masks[val][0] | get_ray_c(self.value_masks[val][2], hi / 3),
+                0 => self.value_masks[val][1] | get_ray_r(self.value_masks[val][2], rwhi),
+                1 => self.value_masks[val][0] | get_ray_c(self.value_masks[val][2], rwhi),
                 _ => {
-                    get_ray_r(self.value_masks[val][0], hi / 3)
-                        | get_yar_r(self.value_masks[val][1], hi % 3)
+                    get_ray_r(self.value_masks[val][0], rwhi)
+                        | get_yar_r(self.value_masks[val][1], clhi)
                 }
             }
     }
@@ -208,7 +217,7 @@ impl FromStr for Game {
                 .map(|c| match c as u8 {
                     46 => Ok(0),
                     x @ 49..58 => Ok(x - 48),
-                    _ => Err(ParseGameError::UnknownCharacter(c)),
+                    _ => Err(ParseGameError::IllegalCharacter(c)),
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .try_into()
@@ -224,18 +233,22 @@ impl FromStr for Game {
 
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(
-            &self
-                .board
-                .iter()
-                .map(|&x| match x {
-                    0 => '.',
-                    x => char::from_digit(x as u32, 10).unwrap(),
-                })
-                .collect::<String>(),
-        )
+        let buffer: [u8; 81] = self.board.map(|x| match x {
+            0 => 46,
+            x => x + 48,
+        });
+        f.write_str(unsafe { str::from_utf8_unchecked(&buffer) })
     }
 }
+
+// impl fmt::Display for ParseGameError {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         f.write_str(match self {
+//             ParseGameError::IncorrectLength => "Incorrect length",
+//             ParseGameError::IllegalCharacter(x) => &format!("Character {} is illegal", x),
+//         })
+//     }
+// }
 
 // impl fmt::Debug for Game {
 //     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -265,7 +278,7 @@ pub enum ShowKinds {
 #[derive(Debug)]
 pub enum ParseGameError {
     IncorrectLength,
-    UnknownCharacter(char),
+    IllegalCharacter(char),
 }
 
 pub struct Game {
