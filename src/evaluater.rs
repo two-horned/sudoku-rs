@@ -4,45 +4,53 @@ use std::mem::MaybeUninit;
 impl Evaluater {
     pub fn new() -> Self {
         Self {
-            buffer: unsafe { MaybeUninit::uninit().assume_init() },
+            genbuf: unsafe { MaybeUninit::uninit().assume_init() },
+            retbuf: unsafe { MaybeUninit::uninit().assume_init() },
         }
     }
 
-    pub fn eval(&mut self, game: Game) -> Result<Game, ()> {
-        let mut level = 0;
-        self.buffer[0] = (game, game.showbestfree());
+    pub fn eval(&mut self, mut game: Game) -> Result<Game, ()> {
+        let mut glev = 0;
+        let mut rlev = 0;
+        self.genbuf[0] = game.showbestfree();
         loop {
-            match &mut self.buffer[level].1 {
-                ShowKinds::SOLVED => return Ok(self.buffer[level].0),
+            match &mut self.genbuf[glev] {
+                ShowKinds::SOLVED => return Ok(game),
                 ShowKinds::FAILED => {
-                    if level == 0 {
+                    if glev == 0 {
                         return Err(());
                     } else {
-                        level -= 1;
+                        glev -= 1;
+                        rlev -= 1;
+                        game.unsafe_unchoose(self.retbuf[rlev]);
                         continue;
                     }
                 }
                 ShowKinds::PICKIDX(idx, candidates) => {
                     let c = candidates.trailing_zeros() as usize;
                     debug_assert!(c < 10, "Candidates are {:b}", candidates);
-                    let mut game = self.buffer[level].0;
                     game.unsafe_choose(*idx, 1 + c);
                     *candidates &= *candidates - 1;
                     if *candidates != 0 {
-                        level += 1;
+                        glev += 1;
                     }
-                    self.buffer[level] = (game, game.showbestfree());
+
+                    self.retbuf[rlev] = *idx;
+                    self.genbuf[glev] = game.showbestfree();
+                    rlev += 1;
                 }
                 ShowKinds::PICKVAL(vhthi, candidates) => {
                     let c = candidates.trailing_zeros() as usize;
                     debug_assert!(c < 10, "Candidates are {:b}", candidates);
-                    let mut game = self.buffer[level].0;
-                    game.unsafe_choose_alt(*vhthi, c);
+                    let idx = game.unsafe_choose_alt(*vhthi, c);
                     *candidates &= *candidates - 1;
                     if *candidates != 0 {
-                        level += 1;
+                        glev += 1;
                     }
-                    self.buffer[level] = (game, game.showbestfree());
+
+                    self.retbuf[rlev] = idx;
+                    self.genbuf[glev] = game.showbestfree();
+                    rlev += 1;
                 }
             }
         }
@@ -50,5 +58,6 @@ impl Evaluater {
 }
 
 pub struct Evaluater {
-    buffer: [(Game, ShowKinds); 81],
+    genbuf: [ShowKinds; 81],
+    retbuf: [usize; 81],
 }

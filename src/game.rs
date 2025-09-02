@@ -95,15 +95,26 @@ impl Game {
         tmp
     }
 
-    pub fn unsafe_choose_alt(&mut self, vht: [usize; 3], idx: usize) {
+    pub fn unsafe_choose_alt(&mut self, vht: [usize; 3], idx: usize) -> usize {
         let [val, ht, hi] = vht;
-        self.unsafe_choose(REV_LOOKUP[ht][hi][idx], val);
+        let true_idx = REV_LOOKUP[ht][hi][idx];
+        self.unsafe_choose(true_idx, val);
+        return true_idx;
     }
 
     pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
+        debug_assert!(self.board[idx] == 0);
         self.board[idx] = val as u8;
         self.frees ^= 1 << idx;
         self.update_masks(idx, val);
+    }
+
+    pub fn unsafe_unchoose(&mut self, idx: usize) {
+        let val = self.board[idx];
+        debug_assert!(val != 0);
+        self.board[idx] = 0;
+        self.frees ^= 1 << idx;
+        self.update_masks(idx, val as usize);
     }
 
     fn update_masks(&mut self, idx: usize, val: usize) {
