@@ -30,7 +30,7 @@ impl Evaluater {
                 ShowKinds::PICKIDX(idx, candidates) => {
                     let idx = *idx;
                     let c = candidates.trailing_zeros() as usize;
-                    game.unsafe_choose(idx, 1 + c);
+                    game.unsafe_choose(idx, c);
                     *candidates &= *candidates - 1;
                     if *candidates == 0 {
                         self.buffer[level].1 = ShowKinds::FAILED;

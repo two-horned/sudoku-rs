@@ -88,7 +88,7 @@ impl Game {
         while i < 81 {
             let val = board[i];
             if val != 0 {
-                tmp.update_masks(i, val as usize);
+                tmp.update_masks(i, val as usize - 1);
             }
             i += 1;
         }
@@ -104,19 +104,19 @@ impl Game {
     }
 
     pub const fn unsafe_choose(&mut self, idx: usize, val: usize) {
-        self.board[idx] = val as u8;
+        self.board[idx] = 1 + val as u8;
         self.update_masks(idx, val);
     }
 
     pub const fn unsafe_unchoose(&mut self, idx: usize) {
-        let val = self.board[idx];
+        let val = self.board[idx] - 1;
         self.board[idx] = 0;
         self.update_masks(idx, val as usize);
     }
 
     const fn update_masks(&mut self, idx: usize, val: usize) {
         self.frees ^= 1 << idx;
-        let mask = 1 << val - 1;
+        let mask = 1 << val;
         let houses = LOOKUP[idx];
         let mut ht = 0;
         while ht < 3 {
@@ -124,7 +124,7 @@ impl Game {
             self.house_masks[ht][hi] ^= mask;
             let mask = 1 << houses[ht ^ 1];
             self.occupied[ht][hi] ^= mask;
-            self.value_masks[val - 1][ht] ^= 1 << hi;
+            self.value_masks[val][ht] ^= 1 << hi;
             ht += 1;
         }
     }
@@ -157,7 +157,7 @@ impl Game {
             while k < 9 {
                 let mut f = self.house_masks[j][k];
                 while f != 0 {
-                    let i = 1 + f.trailing_zeros() as usize;
+                    let i = f.trailing_zeros() as usize;
                     f &= f - 1;
 
                     let c = !self.pos_indices(i, j, k);
@@ -186,7 +186,6 @@ impl Game {
     }
 
     const fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
-        let val = val - 1;
         self.occupied[ht][hi]
             | match ht {
                 0 => self.value_masks[val][1] | get_ray_r(self.value_masks[val][2], hi / 3),
