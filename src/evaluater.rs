@@ -14,6 +14,7 @@ impl Evaluater {
         let mut rlev = 0;
         self.genbuf[0] = game.showbestfree();
         loop {
+            println!("Level {rlev}");
             match &mut self.genbuf[glev] {
                 ShowKinds::SOLVED => return Ok(game),
                 ShowKinds::FAILED => {
@@ -22,7 +23,11 @@ impl Evaluater {
                     } else {
                         glev -= 1;
                         rlev -= 1;
+                        let idx = self.retbuf[rlev];
+                        println!("Removing {idx} ({}, {})", idx / 9, idx % 9);
+                        println!("Before\n{:?}", game);
                         game.unsafe_unchoose(self.retbuf[rlev]);
+                        println!("After\n{:?}", game);
                         continue;
                     }
                 }
