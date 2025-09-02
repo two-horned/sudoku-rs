@@ -75,7 +75,7 @@ const fn get_yar_r(mask: u16, i: usize) -> u16 {
 }
 
 impl Game {
-    fn init_board(board: [u8; 81]) -> Self {
+    const fn init_board(board: [u8; 81]) -> Self {
         let mut tmp = Self {
             board,
             frees: 0x1FFFFFFFFFFFFFFFFFFFF,
@@ -84,55 +84,58 @@ impl Game {
             value_masks: [[0xFE00; 3]; 9],
         };
 
-        for i in 0..81 {
+        let mut i = 0;
+        while i < 81 {
             let val = board[i];
             if val != 0 {
                 tmp.frees ^= 1 << i;
                 tmp.update_masks(i, val as usize);
             }
+            i += 1;
         }
 
         tmp
     }
 
-    pub fn unsafe_choose_alt(&mut self, vht: [usize; 3], idx: usize) -> usize {
+    pub const fn unsafe_choose_alt(&mut self, vht: [usize; 3], idx: usize) -> usize {
         let [val, ht, hi] = vht;
         let true_idx = REV_LOOKUP[ht][hi][idx];
         self.unsafe_choose(true_idx, val);
         return true_idx;
     }
 
-    pub fn unsafe_choose(&mut self, idx: usize, val: usize) {
+    pub const fn unsafe_choose(&mut self, idx: usize, val: usize) {
         self.board[idx] = val as u8;
         self.frees ^= 1 << idx;
         self.update_masks(idx, val);
     }
 
-    pub fn unsafe_unchoose(&mut self, idx: usize) {
+    pub const fn unsafe_unchoose(&mut self, idx: usize) {
         let val = self.board[idx];
         self.board[idx] = 0;
         self.frees ^= 1 << idx;
         self.update_masks(idx, val as usize);
     }
 
-    fn update_masks(&mut self, idx: usize, val: usize) {
+    const fn update_masks(&mut self, idx: usize, val: usize) {
         let mask = 1 << val - 1;
         let houses = LOOKUP[idx];
-        for ht in 0..3 {
+        let mut ht = 0;
+        while ht < 3 {
             let hi = houses[ht];
             self.house_masks[ht][hi] ^= mask;
             let mask = 1 << houses[ht ^ 1];
             self.occupied[ht][hi] ^= mask;
             self.value_masks[val - 1][ht] ^= 1 << hi;
+            ht += 1;
         }
     }
 
-    pub fn showbestfree(&self) -> ShowKinds {
+    pub const fn showbestfree(&self) -> ShowKinds {
         let mut best_value = ShowKinds::SOLVED;
         let mut best_weight = 10;
 
         let mut f = self.frees;
-
         while f != 0 {
             let i = f.trailing_zeros() as usize;
             f &= f - 1;
@@ -150,8 +153,10 @@ impl Game {
             }
         }
 
-        for j in 0..3 {
-            for k in 0..9 {
+        let mut j = 0;
+        while j < 3 {
+            let mut k = 0;
+            while k < 9 {
                 let mut f = self.house_masks[j][k];
                 while f != 0 {
                     let i = 1 + f.trailing_zeros() as usize;
@@ -169,18 +174,20 @@ impl Game {
                         _ => (),
                     }
                 }
+                k += 1;
             }
+            j += 1;
         }
 
         best_value
     }
 
-    fn candidates(&self, idx: usize) -> u16 {
+    const fn candidates(&self, idx: usize) -> u16 {
         let [i, j, k, _] = LOOKUP[idx];
         self.house_masks[0][i] & self.house_masks[1][j] & self.house_masks[2][k]
     }
 
-    fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
+    const fn pos_indices(&self, val: usize, ht: usize, hi: usize) -> u16 {
         let val = val - 1;
         self.occupied[ht][hi]
             | match ht {

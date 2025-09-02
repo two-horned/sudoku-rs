@@ -2,13 +2,13 @@ use crate::game::{Game, ShowKinds};
 use std::mem::MaybeUninit;
 
 impl Evaluater {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             buffer: unsafe { MaybeUninit::uninit().assume_init() },
         }
     }
 
-    pub fn eval(&mut self, mut game: Game) -> Result<Game, ()> {
+    pub const fn eval(&mut self, mut game: Game) -> Result<Game, ()> {
         let mut level = 0;
         self.buffer[0] = (
             unsafe { MaybeUninit::uninit().assume_init() },
