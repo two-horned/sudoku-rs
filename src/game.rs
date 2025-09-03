@@ -59,6 +59,16 @@ const YAR_MAKER: [u16; 8] = {
     tmp
 };
 
+const MINI_LOOKUP: [[usize; 2]; 9] = {
+    let mut tmp = [[0; 2]; 9];
+    let mut i = 0;
+    while i < 9 {
+        tmp[i] = [i / 3, i % 3];
+        i += 1;
+    }
+    tmp
+};
+
 const fn get_ray_r(mask: u16, i: usize) -> u16 {
     let j = 0b111 & mask >> 3 * i;
     RAY_MAKER[j as usize]
@@ -78,7 +88,7 @@ impl Game {
     const fn init_board(board: [u8; 81]) -> Self {
         let mut tmp = Self {
             board,
-            frees: 0x1FFFFFFFFFFFFFFFFFFFF,
+            frees: [0x1FFFFFFFFFFFFFFFFFFFF; 4],
             house_masks: [[0x1FF; 9]; 3],
             occupied: [[0xFE00; 9]; 3],
             value_masks: [[0xFE00; 3]; 9],
@@ -115,12 +125,13 @@ impl Game {
     }
 
     const fn update_masks(&mut self, idx: usize, val: usize) {
-        self.frees ^= 1 << idx;
+        self.frees[3] ^= 1 << idx;
         let mask = 1 << val;
         let houses = LOOKUP[idx];
         let mut ht = 0;
         while ht < 3 {
             let hi = houses[ht];
+            self.frees[ht] ^= 1 << hi * 9 + val;
             self.house_masks[ht][hi] ^= mask;
             let mask = 1 << houses[ht ^ 1];
             self.occupied[ht][hi] ^= mask;
@@ -133,57 +144,46 @@ impl Game {
         let mut best_value = ShowKinds::SOLVED;
         let mut best_weight = 10;
 
-        {
-            let mut f = self.frees;
+        let mut f = self.frees[3];
+        while f != 0 {
+            let i = f.trailing_zeros() as usize;
+            f &= f - 1;
+
+            let c = self.candidates(i);
+
+            match c.count_ones() {
+                0 => return ShowKinds::FAILED,
+                1 => return ShowKinds::PICKIDX(i, c),
+                w if w < best_weight => {
+                    best_weight = w;
+                    best_value = ShowKinds::PICKIDX(i, c);
+                }
+                _ => (),
+            }
+        }
+
+        let mut t = 0;
+        while t < 3 {
+            let mut f = self.frees[t];
             while f != 0 {
-                let i = f.trailing_zeros() as usize;
+                let idx = f.trailing_zeros() as usize;
+                let [i, v, _, _] = LOOKUP[idx];
+                let [j, k] = MINI_LOOKUP[i];
                 f &= f - 1;
 
-                let c = self.candidates(i);
+                let c = !self.pos_indices(v, t, i, j, k);
 
                 match c.count_ones() {
                     0 => return ShowKinds::FAILED,
-                    1 => return ShowKinds::PICKIDX(i, c),
+                    1 => return ShowKinds::PICKVAL([v, t, i], c),
                     w if w < best_weight => {
                         best_weight = w;
-                        best_value = ShowKinds::PICKIDX(i, c);
+                        best_value = ShowKinds::PICKVAL([v, t, i], c);
                     }
                     _ => (),
                 }
             }
-        }
-
-        {
-            let mut i = 0;
-            while i < 3 {
-                let mut j = 0;
-                while j < 3 {
-                    let mut k = 0;
-                    while k < 3 {
-                        let t = 3 * j + k;
-                        let mut f = self.house_masks[i][t];
-                        while f != 0 {
-                            let v = f.trailing_zeros() as usize;
-                            f &= f - 1;
-
-                            let c = !self.pos_indices(v, i, t, j, k);
-
-                            match c.count_ones() {
-                                0 => return ShowKinds::FAILED,
-                                1 => return ShowKinds::PICKVAL([v, i, t], c),
-                                w if w < best_weight => {
-                                    best_weight = w;
-                                    best_value = ShowKinds::PICKVAL([v, i, t], c);
-                                }
-                                _ => (),
-                            }
-                        }
-                        k += 1;
-                    }
-                    j += 1;
-                }
-                i += 1;
-            }
+            t += 1;
         }
 
         best_value
@@ -283,7 +283,7 @@ pub enum ParseGameError {
 
 pub struct Game {
     board: [u8; 81],
-    frees: u128,
+    frees: [u128; 4],
     house_masks: [[u16; 9]; 3],
     occupied: [[u16; 9]; 3],
     value_masks: [[u16; 3]; 9],
