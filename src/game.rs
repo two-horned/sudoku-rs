@@ -189,6 +189,7 @@ impl Game {
         self.house_masks[0][i] & self.house_masks[1][j] & self.house_masks[2][k]
     }
 
+    #[inline(always)]
     const fn pos_indices(&self, ht: usize, id: usize) -> u16 {
         let [hi, val, _, _] = LOOKUP[id];
         let [rwhi, clhi] = MINI_LOOKUP[hi];
