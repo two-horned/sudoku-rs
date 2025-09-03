@@ -35,14 +35,14 @@ const REV_LOOKUP: [[[usize; 9]; 9]; 3] = {
 };
 
 const RAY_MAKER: [u16; 8] = {
-    let mut tmp = [0; 8];
+    let mut tmp = [0x1FF; 8];
     let mut i = 0;
     while i < 8 {
         let mut f: usize = i;
         while f != 0 {
             let c = f.trailing_zeros();
             f &= f - 1;
-            tmp[i] ^= 0b111 << 3 * c;
+            tmp[7 - i] ^= 0b111 << 3 * c;
         }
         i += 1;
     }
@@ -50,10 +50,10 @@ const RAY_MAKER: [u16; 8] = {
 };
 
 const YAR_MAKER: [u16; 8] = {
-    let mut tmp = [0; 8];
-    let mut i: u16 = 0;
+    let mut tmp = [0x1FF; 8];
+    let mut i: u16 = 8;
     while i < 8 {
-        tmp[i as usize] = i ^ (i << 3) ^ (i << 6);
+        tmp[7 - i as usize] ^= i ^ (i << 3) ^ (i << 6);
         i += 1;
     }
     tmp
@@ -90,8 +90,8 @@ impl Game {
             board,
             frees: [0x1FFFFFFFFFFFFFFFFFFFF; 4],
             house_masks: [[0x1FF; 9]; 3],
-            occupied: [[0xFE00; 9]; 3],
-            value_masks: [[0xFE00; 3]; 9],
+            occupied: [[0x1FF; 9]; 3],
+            value_masks: [[0x1FF; 3]; 9],
         };
 
         let mut i = 0;
@@ -167,7 +167,7 @@ impl Game {
             while f != 0 {
                 let i = f.trailing_zeros() as usize;
                 f &= f - 1;
-                let c = !self.pos_indices(t, i);
+                let c = self.pos_indices(t, i);
                 match c.count_ones() {
                     0 => return ShowKinds::FAILED,
                     1 => return ShowKinds::PICKVAL([t, i], c),
@@ -194,12 +194,12 @@ impl Game {
         let [hi, val, _, _] = LOOKUP[id];
         let [rwhi, clhi] = MINI_LOOKUP[hi];
         self.occupied[ht][hi]
-            | match ht {
-                0 => self.value_masks[val][1] | get_ray_r(self.value_masks[val][2], rwhi),
-                1 => self.value_masks[val][0] | get_ray_c(self.value_masks[val][2], rwhi),
+            & match ht {
+                0 => self.value_masks[val][1] & get_ray_r(self.value_masks[val][2], rwhi),
+                1 => self.value_masks[val][0] & get_ray_c(self.value_masks[val][2], rwhi),
                 _ => {
                     get_ray_r(self.value_masks[val][0], rwhi)
-                        | get_yar_r(self.value_masks[val][1], clhi)
+                        & get_yar_r(self.value_masks[val][1], clhi)
                 }
             }
     }
