@@ -106,8 +106,9 @@ impl Game {
         tmp
     }
 
-    pub const fn unsafe_choose_alt(&mut self, vht: [usize; 3], idx: usize) -> usize {
-        let [val, ht, hi] = vht;
+    pub const fn unsafe_choose_alt(&mut self, vht: [usize; 2], idx: usize) -> usize {
+        let [ht, id] = vht;
+        let [hi, val, _, _] = LOOKUP[id];
         let true_idx = REV_LOOKUP[ht][hi][idx];
         self.unsafe_choose(true_idx, val);
         return true_idx;
@@ -148,9 +149,7 @@ impl Game {
         while f != 0 {
             let i = f.trailing_zeros() as usize;
             f &= f - 1;
-
             let c = self.candidates(i);
-
             match c.count_ones() {
                 0 => return ShowKinds::FAILED,
                 1 => return ShowKinds::PICKIDX(i, c),
@@ -166,19 +165,15 @@ impl Game {
         while t < 3 {
             let mut f = self.frees[t];
             while f != 0 {
-                let idx = f.trailing_zeros() as usize;
-                let [i, v, _, _] = LOOKUP[idx];
-                let [j, k] = MINI_LOOKUP[i];
+                let i = f.trailing_zeros() as usize;
                 f &= f - 1;
-
-                let c = !self.pos_indices(v, t, i, j, k);
-
+                let c = !self.pos_indices(t, i);
                 match c.count_ones() {
                     0 => return ShowKinds::FAILED,
-                    1 => return ShowKinds::PICKVAL([v, t, i], c),
+                    1 => return ShowKinds::PICKVAL([t, i], c),
                     w if w < best_weight => {
                         best_weight = w;
-                        best_value = ShowKinds::PICKVAL([v, t, i], c);
+                        best_value = ShowKinds::PICKVAL([t, i], c);
                     }
                     _ => (),
                 }
@@ -194,7 +189,9 @@ impl Game {
         self.house_masks[0][i] & self.house_masks[1][j] & self.house_masks[2][k]
     }
 
-    const fn pos_indices(&self, val: usize, ht: usize, hi: usize, rwhi: usize, clhi: usize) -> u16 {
+    const fn pos_indices(&self, ht: usize, id: usize) -> u16 {
+        let [hi, val, _, _] = LOOKUP[id];
+        let [rwhi, clhi] = MINI_LOOKUP[hi];
         self.occupied[ht][hi]
             | match ht {
                 0 => self.value_masks[val][1] | get_ray_r(self.value_masks[val][2], rwhi),
@@ -270,7 +267,7 @@ impl fmt::Display for Game {
 #[derive(Clone, Copy)]
 pub enum ShowKinds {
     PICKIDX(usize, u16),
-    PICKVAL([usize; 3], u16),
+    PICKVAL([usize; 2], u16),
     SOLVED,
     FAILED,
 }
