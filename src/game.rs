@@ -51,7 +51,7 @@ const RAY_MAKER: [u16; 8] = {
 
 const YAR_MAKER: [u16; 8] = {
     let mut tmp = [0x1FF; 8];
-    let mut i: u16 = 8;
+    let mut i: u16 = 0;
     while i < 8 {
         tmp[7 - i as usize] ^= i ^ (i << 3) ^ (i << 6);
         i += 1;
@@ -121,8 +121,8 @@ impl Game {
 
     pub const fn unsafe_unchoose(&mut self, idx: usize) {
         let val = self.board[idx] - 1;
-        self.board[idx] = 0;
         self.update_masks(idx, val as usize);
+        self.board[idx] = 0;
     }
 
     const fn update_masks(&mut self, idx: usize, val: usize) {
@@ -134,8 +134,7 @@ impl Game {
             let hi = houses[ht];
             self.frees[ht] ^= 1 << hi * 9 + val;
             self.house_masks[ht][hi] ^= mask;
-            let mask = 1 << houses[ht ^ 1];
-            self.occupied[ht][hi] ^= mask;
+            self.occupied[ht][hi] ^= 1 << houses[ht ^ 1];
             self.value_masks[val][ht] ^= 1 << hi;
             ht += 1;
         }
