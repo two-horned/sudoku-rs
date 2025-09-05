@@ -2,14 +2,13 @@ use std::{fmt, str::FromStr};
 
 const LOOKUP: [[usize; 4]; 81] = {
     let mut tmp = [[0; 4]; 81];
-    let (mut nine_i, mut sqr_row);
 
     let mut i = 0;
     let mut j;
     while i < 9 {
         j = 0;
-        nine_i = i * 9;
-        sqr_row = i - i % 3;
+        let nine_i = i * 9;
+        let sqr_row = i - i % 3;
         while j < 9 {
             let idx = nine_i + j;
             let sqr = sqr_row + j / 3;
