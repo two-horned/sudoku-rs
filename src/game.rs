@@ -111,17 +111,17 @@ impl Game {
         tmp
     }
 
-    pub const fn unsafe_choose_alt(&mut self, vht: [usize; 2], idx: usize) -> usize {
-        let [ht, id] = vht;
+    pub const fn unsafe_choose(&mut self, idx: usize, val: usize) {
+        self.board[idx] = 1 + val as u8;
+        self.update_masks(idx, val);
+    }
+
+    pub const fn unsafe_choose_alt(&mut self, vti: [usize; 2], idx: usize) -> usize {
+        let [ht, id] = vti;
         let [hi, val, _, _] = LOOKUP[id];
         let true_idx = REV_LOOKUP[ht][hi][idx];
         self.unsafe_choose(true_idx, val);
         return true_idx;
-    }
-
-    pub const fn unsafe_choose(&mut self, idx: usize, val: usize) {
-        self.board[idx] = 1 + val as u8;
-        self.update_masks(idx, val);
     }
 
     pub const fn unsafe_unchoose(&mut self, idx: usize) {
@@ -157,11 +157,10 @@ impl Game {
             match c.count_ones() {
                 0 => return ShowKinds::FAILED,
                 1 => return ShowKinds::PICKIDX(i, c),
-                w if w < best_weight => {
+                w => if w < best_weight {
                     best_weight = w;
                     best_value = ShowKinds::PICKIDX(i, c);
                 }
-                _ => (),
             }
         }
 
@@ -175,11 +174,10 @@ impl Game {
                 match c.count_ones() {
                     0 => return ShowKinds::FAILED,
                     1 => return ShowKinds::PICKVAL([t, i], c),
-                    w if w < best_weight => {
+                    w => if w < best_weight {
                         best_weight = w;
                         best_value = ShowKinds::PICKVAL([t, i], c);
                     }
-                    _ => (),
                 }
             }
             t += 1;

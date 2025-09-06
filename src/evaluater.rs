@@ -39,14 +39,14 @@ impl Evaluater {
                     level += 1;
                     self.buffer[level] = (idx as u8, game.showbestfree());
                 }
-                ShowKinds::PICKVAL(vhthi, mut candidates) => {
+                ShowKinds::PICKVAL(vti, mut candidates) => {
                     let c = candidates.trailing_zeros() as usize;
-                    let idx = game.unsafe_choose_alt(vhthi, c);
+                    let idx = game.unsafe_choose_alt(vti, c);
                     candidates &= candidates - 1;
                     if candidates == 0 {
                         self.buffer[level].1 = ShowKinds::FAILED;
                     } else {
-                        self.buffer[level].1 = ShowKinds::PICKVAL(vhthi, candidates);
+                        self.buffer[level].1 = ShowKinds::PICKVAL(vti, candidates);
                     }
                     level += 1;
                     self.buffer[level] = (idx as u8, game.showbestfree());
