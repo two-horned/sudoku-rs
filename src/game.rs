@@ -120,8 +120,8 @@ impl Game {
 
     pub const fn unsafe_unchoose(&mut self, idx: usize) {
         let val = self.board[idx] - 1;
-        self.update_masks(idx, val as usize);
         self.board[idx] = 0;
+        self.update_masks(idx, val as usize);
     }
 
     const fn update_masks(&mut self, idx: usize, val: usize) {
