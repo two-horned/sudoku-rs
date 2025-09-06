@@ -84,6 +84,12 @@ const fn get_yar_r(mask: u16, i: usize) -> u16 {
 }
 
 impl Game {
+    /**
+    Given board must not violate any these rules:
+    * Each row contains a digit at most once.
+    * Each col contains a digit at most once.
+    * Each sqr contains a digit at most once.
+    */
     const fn init_board(board: [u8; 81]) -> Self {
         let mut tmp = Self {
             board,
