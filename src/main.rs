@@ -23,7 +23,7 @@ fn main() -> io::Result<()> {
 
         match Game::from_str(&buf) {
             Err(err) => {
-                stderr.write(format!("{:?}\n", err).as_bytes())?;
+                stderr.write(format!("{}\n", err).as_bytes())?;
                 continue;
             }
             Ok(x) => match evaluater.eval(x) {

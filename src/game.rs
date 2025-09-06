@@ -237,33 +237,33 @@ impl fmt::Display for Game {
     }
 }
 
-// impl fmt::Display for ParseGameError {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         f.write_str(match self {
-//             ParseGameError::IncorrectLength => "Incorrect length",
-//             ParseGameError::IllegalCharacter(x) => &format!("Character {} is illegal", x),
-//         })
-//     }
-// }
+impl fmt::Display for ParseGameError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&match self {
+            ParseGameError::IncorrectLength => "Incorrect length".to_string(),
+            ParseGameError::IllegalCharacter(x) => format!("Character {} is illegal", x),
+        })
+    }
+}
 
-// impl fmt::Debug for Game {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         let string = (0..9)
-//             .map(|i| {
-//                 (0..9)
-//                     .map(|j| match self.board[i * 9 + j] {
-//                         0 => '.',
-//                         x => char::from_digit(x as u32, 10).unwrap(),
-//                     })
-//                     .collect::<String>()
-//                     + "\n"
-//             })
-//             .collect::<String>();
-//         f.write_str(&string)
-//     }
-// }
+impl fmt::Debug for Game {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = (0..9)
+            .map(|i| {
+                (0..9)
+                    .map(|j| match self.board[i * 9 + j] {
+                        0 => '.',
+                        x => char::from_digit(x as u32, 10).unwrap(),
+                    })
+                    .collect::<String>()
+                    + "\n"
+            })
+            .collect::<String>();
+        f.write_str(&string)
+    }
+}
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ShowKinds {
     PICKIDX(usize, u16),
     PICKVAL([usize; 2], u16),

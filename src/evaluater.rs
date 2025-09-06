@@ -8,13 +8,15 @@ impl Evaluater {
         }
     }
 
-    pub const fn eval(&mut self, mut game: Game) -> Result<Game, ()> {
+    pub fn eval(&mut self, mut game: Game) -> Result<Game, ()> {
         let mut level = 0;
         self.buffer[0] = (
             unsafe { MaybeUninit::uninit().assume_init() },
             game.showbestfree(),
         );
         loop {
+            println!("This is the kind of decision.... {:?}", self.buffer[level]);
+            return Err(());
             match &mut self.buffer[level].1 {
                 ShowKinds::SOLVED => return Ok(game),
                 ShowKinds::FAILED => {
