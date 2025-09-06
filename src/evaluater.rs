@@ -15,7 +15,7 @@ impl Evaluater {
             game.showbestfree(),
         );
         loop {
-            match &mut self.buffer[level].1 {
+            match self.buffer[level].1 {
                 ShowKinds::SOLVED => return Ok(game),
                 ShowKinds::FAILED => {
                     if level == 0 {
@@ -27,23 +27,26 @@ impl Evaluater {
                         continue;
                     }
                 }
-                ShowKinds::PICKIDX(idx, candidates) => {
-                    let idx = *idx;
+                ShowKinds::PICKIDX(idx, mut candidates) => {
                     let c = candidates.trailing_zeros() as usize;
                     game.unsafe_choose(idx, c);
-                    *candidates &= *candidates - 1;
-                    if *candidates == 0 {
+                    candidates &= candidates - 1;
+                    if candidates == 0 {
                         self.buffer[level].1 = ShowKinds::FAILED;
+                    } else {
+                        self.buffer[level].1 = ShowKinds::PICKIDX(idx, candidates);
                     }
                     level += 1;
                     self.buffer[level] = (idx as u8, game.showbestfree());
                 }
-                ShowKinds::PICKVAL(vhthi, candidates) => {
+                ShowKinds::PICKVAL(vhthi, mut candidates) => {
                     let c = candidates.trailing_zeros() as usize;
-                    let idx = game.unsafe_choose_alt(*vhthi, c);
-                    *candidates &= *candidates - 1;
-                    if *candidates == 0 {
+                    let idx = game.unsafe_choose_alt(vhthi, c);
+                    candidates &= candidates - 1;
+                    if candidates == 0 {
                         self.buffer[level].1 = ShowKinds::FAILED;
+                    } else {
+                        self.buffer[level].1 = ShowKinds::PICKVAL(vhthi, candidates);
                     }
                     level += 1;
                     self.buffer[level] = (idx as u8, game.showbestfree());
