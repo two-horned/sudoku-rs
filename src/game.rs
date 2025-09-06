@@ -157,9 +157,11 @@ impl Game {
             match c.count_ones() {
                 0 => return ShowKinds::FAILED,
                 1 => return ShowKinds::PICKIDX(i, c),
-                w => if w < best_weight {
-                    best_weight = w;
-                    best_value = ShowKinds::PICKIDX(i, c);
+                w => {
+                    if w < best_weight {
+                        best_weight = w;
+                        best_value = ShowKinds::PICKIDX(i, c);
+                    }
                 }
             }
         }
@@ -174,9 +176,11 @@ impl Game {
                 match c.count_ones() {
                     0 => return ShowKinds::FAILED,
                     1 => return ShowKinds::PICKVAL([t, i], c),
-                    w => if w < best_weight {
-                        best_weight = w;
-                        best_value = ShowKinds::PICKVAL([t, i], c);
+                    w => {
+                        if w < best_weight {
+                            best_weight = w;
+                            best_value = ShowKinds::PICKVAL([t, i], c);
+                        }
                     }
                 }
             }
@@ -250,24 +254,7 @@ impl fmt::Display for ParseGameError {
     }
 }
 
-impl fmt::Debug for Game {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let string = (0..9)
-            .map(|i| {
-                (0..9)
-                    .map(|j| match self.board[i * 9 + j] {
-                        0 => '.',
-                        x => char::from_digit(x as u32, 10).unwrap(),
-                    })
-                    .collect::<String>()
-                    + "\n"
-            })
-            .collect::<String>();
-        f.write_str(&string)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum ShowKinds {
     PICKIDX(usize, u16),
     PICKVAL([usize; 2], u16),
@@ -275,7 +262,6 @@ pub enum ShowKinds {
     FAILED,
 }
 
-#[derive(Debug)]
 pub enum ParseGameError {
     IncorrectLength,
     IllegalCharacter(char),
