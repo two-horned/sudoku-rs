@@ -1,4 +1,8 @@
 # sudoku-rs
+> [!WARNING]
+> I don't plan to apply any improvements or other changes to the Rust port of my Sudoku solver.
+> You can checkout my Zig port for a more performant solution.
+
 This is Rust implementation of my sudoku solver.
 
 The underlying algorithm is pretty simple.
